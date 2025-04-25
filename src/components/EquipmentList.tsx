@@ -18,11 +18,13 @@ import {
 import { fetchEquipment } from "../services/equipmentServices";
 import { Equipment } from "../types";
 import AddEquipmentModal from "./AddEquipmentModal";
+import { useNavigate } from "react-router-dom";
 
 const EquipmentList: React.FC = () => {
   const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [openModal, setOpenModal] = useState(false);
+  const navigate = useNavigate();
 
   const loadEquipment = async () => {
     setLoading(true);
@@ -75,7 +77,12 @@ const EquipmentList: React.FC = () => {
             </TableHead>
             <TableBody>
               {equipmentList.map((item) => (
-                <TableRow key={item.id}>
+                <TableRow
+                  key={item.id}
+                  hover
+                  sx={{ cursor: "pointer" }}
+                  onClick={() => navigate(`/equipment/${item.id}`)}
+                >
                   <TableCell>{item.name}</TableCell>
                   <TableCell>{item.category}</TableCell>
                   <TableCell>{item.status}</TableCell>

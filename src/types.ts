@@ -2,18 +2,19 @@ export interface Equipment {
   id?: string;
   name: string;
   category: string;
-  status: 'available' | 'in_use' | 'maintenance';
+  status: string;
   location: string;
   notes?: string;
-  lastInspection?: string;
-  assignedTo?: string;
-
-  // 🔧 New core fields
   make: string;
   serialNumber: string;
   modelNumber: string;
+  lastInspection?: string;
+  assignedTo?: string;
 
-  // Nested optional groups
+  netWeight?: string;
+  grossWeight?: string;
+  description?: string;
+
   legal?: {
     licensePlate?: string;
     insuranceInfo?: string;
@@ -23,4 +24,18 @@ export interface Equipment {
     serialNumber?: string;
     modelNumber?: string;
   };
+
+  damageReports?: DamageReport[];
+}
+
+export interface DamageReport {
+  partName: string;
+  partNumber: string;
+  supplier1: string;
+  price1: string;
+  supplier2: string;
+  price2: string;
+  supplier3: string;
+  price3: string;
+  timestamp?: string;
 }

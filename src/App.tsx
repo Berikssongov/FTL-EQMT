@@ -17,8 +17,12 @@ import {
   useNavigate,
   useLocation,
 } from "react-router-dom";
-import EquipmentList from "./components/EquipmentList";
 
+import EquipmentList from "./components/EquipmentList";
+import EquipmentDetails from "./components/EquipmentDetails"; // ✅ new
+// Dashboard is defined inline below
+
+// ---------- Header ----------
 const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -27,7 +31,11 @@ const Header: React.FC = () => {
     navigate(newValue);
   };
 
-  const currentTab = location.pathname === "/equipment" ? "/equipment" : "/";
+  const currentTab =
+    location.pathname === "/equipment" ||
+    location.pathname.startsWith("/equipment/")
+      ? "/equipment"
+      : "/";
 
   return (
     <>
@@ -62,7 +70,7 @@ const Header: React.FC = () => {
           textColor="inherit"
           centered
           sx={{
-            "& .MuiTab-root": { color: "rgb(206, 199, 188)" }, // tab text
+            "& .MuiTab-root": { color: "rgb(206, 199, 188)" },
             "& .Mui-selected": { fontWeight: 600 },
           }}
         >
@@ -74,6 +82,7 @@ const Header: React.FC = () => {
   );
 };
 
+// ---------- Dashboard ----------
 const Dashboard: React.FC = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
@@ -88,6 +97,7 @@ const Dashboard: React.FC = () => {
   );
 };
 
+// ---------- App ----------
 const App: React.FC = () => {
   return (
     <Router>
@@ -97,6 +107,7 @@ const App: React.FC = () => {
       <Box component="main" sx={{ py: 4 }}>
         <Routes>
           <Route path="/" element={<Dashboard />} />
+
           <Route
             path="/equipment"
             element={
@@ -105,6 +116,16 @@ const App: React.FC = () => {
                   Equipment Inventory
                 </Typography>
                 <EquipmentList />
+              </Container>
+            }
+          />
+
+          {/* ✅ NEW: Equipment Detail Route */}
+          <Route
+            path="/equipment/:id"
+            element={
+              <Container maxWidth="lg">
+                <EquipmentDetails />
               </Container>
             }
           />
