@@ -7,15 +7,16 @@ import {
   DialogActions,
   Button,
   TextField,
-  Grid,
   MenuItem,
+  Grid,
   CircularProgress,
   Divider,
   Typography,
 } from "@mui/material";
 
-import { Equipment } from "../types";
-import { updateEquipment } from "../services/equipmentServices"; // We already added this!
+import { Equipment, Location } from "../types";
+import { updateEquipment } from "../services/equipmentServices";
+import { fetchLocations } from "../services/locationsService";
 
 interface EquipmentEditModalProps {
   open: boolean;
@@ -32,17 +33,29 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
 }) => {
   const [form, setForm] = useState<Equipment>(equipment);
   const [saving, setSaving] = useState(false);
+  const [locations, setLocations] = useState<Location[]>([]);
 
   useEffect(() => {
     setForm(equipment);
-  }, [equipment]);
+    if (open) {
+      loadLocations();
+    }
+  }, [equipment, open]);
+
+  const loadLocations = async () => {
+    try {
+      const data = await fetchLocations();
+      setLocations(data);
+    } catch (error) {
+      console.error("Error fetching locations:", error);
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
 
-    // Nested fields (legal and engine)
     if (name.startsWith("legal.")) {
       const field = name.split(".")[1];
       setForm((prev) => ({
@@ -113,6 +126,7 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
               select
               fullWidth
               variant="outlined"
+              sx={{ minWidth: "200px" }}
               value={form.category}
               onChange={handleChange}
             >
@@ -167,15 +181,24 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
             />
           </Grid>
 
+          {/* Location Dropdown */}
           <Grid item xs={12} {...({} as any)}>
             <TextField
+              select
               label="Location"
               name="location"
               fullWidth
               variant="outlined"
+              sx={{ minWidth: "200px" }}
               value={form.location}
               onChange={handleChange}
-            />
+            >
+              {locations.map((loc) => (
+                <MenuItem key={loc.id} value={loc.name}>
+                  {loc.name}
+                </MenuItem>
+              ))}
+            </TextField>
           </Grid>
 
           <Grid item xs={12} {...({} as any)}>
@@ -191,7 +214,7 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
             />
           </Grid>
 
-          {/* Divider */}
+          {/* Divider for Legal Info */}
           <Grid item xs={12} {...({} as any)}>
             <Divider sx={{ my: 2 }} />
             <Typography variant="h6" fontWeight={600}>
@@ -199,7 +222,6 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
             </Typography>
           </Grid>
 
-          {/* Legal Info */}
           <Grid item xs={12} sm={6} {...({} as any)}>
             <TextField
               label="License Plate"
@@ -222,7 +244,7 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
             />
           </Grid>
 
-          {/* Divider */}
+          {/* Divider for Engine Info */}
           <Grid item xs={12} {...({} as any)}>
             <Divider sx={{ my: 2 }} />
             <Typography variant="h6" fontWeight={600}>
@@ -230,7 +252,6 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
             </Typography>
           </Grid>
 
-          {/* Engine Info */}
           <Grid item xs={12} sm={6} {...({} as any)}>
             <TextField
               label="Engine Serial Number"
@@ -253,7 +274,7 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
             />
           </Grid>
 
-          {/* Divider */}
+          {/* Divider for Specs */}
           <Grid item xs={12} {...({} as any)}>
             <Divider sx={{ my: 2 }} />
             <Typography variant="h6" fontWeight={600}>
@@ -261,7 +282,6 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
             </Typography>
           </Grid>
 
-          {/* Specs — new fields for weight and towing (optional fields) */}
           <Grid item xs={12} sm={6} {...({} as any)}>
             <TextField
               label="Weight Capacity (lbs)"
@@ -283,8 +303,6 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
               onChange={handleChange}
             />
           </Grid>
-
-          {/* Future fields: purchase date, warranty info can go here later */}
         </Grid>
       </DialogContent>
 

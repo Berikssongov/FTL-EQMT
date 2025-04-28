@@ -39,3 +39,24 @@ export interface DamageReport {
   price3: string;
   timestamp?: string;
 }
+export interface HandTool {
+  id?: string;
+  name: string;
+  location: string;
+  condition: string;
+  quantity: number;
+}
+
+export interface PowerTool {
+  id?: string;
+  name: string;
+  location: string;
+  serialNumber?: string;
+  condition: string;
+}
+
+export interface Location {
+  id?: string;
+  name: string;
+}
+

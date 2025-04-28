@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   CssBaseline,
   AppBar,
@@ -8,6 +8,9 @@ import {
   Container,
   Tabs,
   Tab,
+  IconButton,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 
 import {
@@ -19,22 +22,46 @@ import {
 } from "react-router-dom";
 
 import EquipmentList from "./components/EquipmentList";
-import EquipmentDetails from "./components/EquipmentDetails"; // ✅ new
-// Dashboard is defined inline below
+import EquipmentDetails from "./components/EquipmentDetails";
+import DashboardHome from "./components/DashboardHome";
+import HandToolsList from "./components/HandToolsList";
+import PowerToolsList from "./components/PowerToolsList";
+import ManageLocationsPage from "./components/ManageLocationsPage"; // ✅ New
+
+import { Settings as SettingsIcon } from "@mui/icons-material"; // ✅ Gear icon
 
 // ---------- Header ----------
 const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
   const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
     navigate(newValue);
+  };
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleMenuItemClick = (path: string) => {
+    navigate(path);
+    handleMenuClose();
   };
 
   const currentTab =
     location.pathname === "/equipment" ||
     location.pathname.startsWith("/equipment/")
       ? "/equipment"
+      : location.pathname === "/hand-tools"
+      ? "/hand-tools"
+      : location.pathname === "/power-tools"
+      ? "/power-tools"
       : "/";
 
   return (
@@ -60,7 +87,30 @@ const Header: React.FC = () => {
           >
             FTL Equipment Manager
           </Typography>
-          <Box sx={{ width: 170 }} />
+
+          {/* Gear Icon for Admin Menu */}
+          <Box>
+            <IconButton color="inherit" onClick={handleMenuOpen} size="large">
+              <SettingsIcon />
+            </IconButton>
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleMenuClose}
+              anchorOrigin={{
+                vertical: "bottom",
+                horizontal: "right",
+              }}
+              transformOrigin={{
+                vertical: "top",
+                horizontal: "right",
+              }}
+            >
+              <MenuItem onClick={() => handleMenuItemClick("/locations")}>
+                Manage Locations
+              </MenuItem>
+            </Menu>
+          </Box>
         </Toolbar>
 
         <Tabs
@@ -76,24 +126,11 @@ const Header: React.FC = () => {
         >
           <Tab label="Dashboard" value="/" />
           <Tab label="Equipment List" value="/equipment" />
+          <Tab label="Hand Tools" value="/hand-tools" />
+          <Tab label="Power Tools" value="/power-tools" />
         </Tabs>
       </AppBar>
     </>
-  );
-};
-
-// ---------- Dashboard ----------
-const Dashboard: React.FC = () => {
-  return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
-      <Typography variant="h4" sx={{ fontWeight: 500, mb: 2 }}>
-        Dashboard
-      </Typography>
-      <Typography variant="body1" color="textSecondary">
-        This is your future home for reports, metrics, and a snapshot of
-        equipment activity.
-      </Typography>
-    </Container>
   );
 };
 
@@ -106,8 +143,7 @@ const App: React.FC = () => {
 
       <Box component="main" sx={{ py: 4 }}>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-
+          <Route path="/" element={<DashboardHome />} />
           <Route
             path="/equipment"
             element={
@@ -119,13 +155,35 @@ const App: React.FC = () => {
               </Container>
             }
           />
-
-          {/* ✅ NEW: Equipment Detail Route */}
           <Route
             path="/equipment/:id"
             element={
               <Container maxWidth="lg">
                 <EquipmentDetails />
+              </Container>
+            }
+          />
+          <Route
+            path="/hand-tools"
+            element={
+              <Container maxWidth="lg">
+                <HandToolsList />
+              </Container>
+            }
+          />
+          <Route
+            path="/power-tools"
+            element={
+              <Container maxWidth="lg">
+                <PowerToolsList />
+              </Container>
+            }
+          />
+          <Route
+            path="/locations"
+            element={
+              <Container maxWidth="lg">
+                <ManageLocationsPage />
               </Container>
             }
           />
