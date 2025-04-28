@@ -51,6 +51,15 @@ export const updateEquipmentById = async (
   const docRef = doc(db, "equipment", id);
   await updateDoc(docRef, updates);
 };
+export const updateEquipment = async (id: string, data: Partial<Equipment>) => {
+  try {
+    const docRef = doc(db, "equipment", id);
+    await updateDoc(docRef, data);
+  } catch (error) {
+    console.error("Error updating equipment:", error);
+    throw error;
+  }
+};
 
 export const addDamageReport = async (
   id: string,

@@ -1,310 +1,311 @@
 // src/components/EquipmentDetails.tsx
 import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
-  Box,
   Typography,
+  Box,
   Paper,
   Divider,
   CircularProgress,
   Button,
-  Grid,
-  Tabs,
-  Tab,
-  TextField,
+  Stack,
 } from "@mui/material";
-import { useParams } from "react-router-dom";
 
-import { Equipment, DamageReport } from "../types";
-import {
-  getEquipmentById,
-  updateEquipmentById,
-  addDamageReport,
-} from "../services/equipmentServices";
+import { Equipment } from "../types";
+import { getEquipmentById } from "../services/equipmentServices";
+import { fetchServiceRecordsByEquipmentId } from "../services/serviceRecordsService";
+import { ServiceRecord } from "../services/serviceRecordsService";
+import { fetchPartRecordsByEquipmentId } from "../services/partsRecordsService";
+import { PartRecord } from "../services/partsRecordsService";
+
+import EquipmentEditModal from "./EquipmentEditModal";
+import ServiceRecordForm from "./ServiceRecordForm";
+import PartsRecordForm from "./PartsRecordForm";
 
 const EquipmentDetails: React.FC = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+
   const [equipment, setEquipment] = useState<Equipment | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState(0);
+  const [editOpen, setEditOpen] = useState(false);
 
-  const [netWeight, setNetWeight] = useState("");
-  const [grossWeight, setGrossWeight] = useState("");
-  const [description, setDescription] = useState("");
+  const [serviceRecords, setServiceRecords] = useState<ServiceRecord[]>([]);
+  const [serviceFormOpen, setServiceFormOpen] = useState(false);
 
-  const [damage, setDamage] = useState<DamageReport>({
-    partName: "",
-    partNumber: "",
-    supplier1: "",
-    price1: "",
-    supplier2: "",
-    price2: "",
-    supplier3: "",
-    price3: "",
-  });
+  const [partRecords, setPartRecords] = useState<PartRecord[]>([]);
+  const [partsFormOpen, setPartsFormOpen] = useState(false);
 
   useEffect(() => {
-    const fetchEquipment = async () => {
-      if (!id) return;
-      const item = await getEquipmentById(id);
-      if (item) {
-        setEquipment(item);
-        setNetWeight(item.netWeight || "");
-        setGrossWeight(item.grossWeight || "");
-        setDescription(item.description || "");
-      }
-      setLoading(false);
-    };
-
-    fetchEquipment();
+    if (id) {
+      fetchEquipment();
+      fetchServiceHistory();
+      fetchPartsHistory();
+    }
   }, [id]);
 
-  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
-    setTab(newValue);
+  const fetchEquipment = async () => {
+    try {
+      if (!id) return;
+      const item = await getEquipmentById(id);
+      setEquipment(item);
+    } catch (error) {
+      console.error("Error fetching equipment:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSaveInfo = async () => {
+  const fetchServiceHistory = async () => {
     if (!id) return;
-    await updateEquipmentById(id, {
-      netWeight,
-      grossWeight,
-      description,
-    });
-    alert("Additional info saved!");
+    try {
+      const records = await fetchServiceRecordsByEquipmentId(id);
+      setServiceRecords(records);
+    } catch (error) {
+      console.error("Error fetching service history:", error);
+    }
   };
 
-  const handleSaveDamage = async () => {
+  const fetchPartsHistory = async () => {
     if (!id) return;
-    await addDamageReport(id, damage);
-    alert("Damage report saved!");
-    setDamage({
-      partName: "",
-      partNumber: "",
-      supplier1: "",
-      price1: "",
-      supplier2: "",
-      price2: "",
-      supplier3: "",
-      price3: "",
-    });
+    try {
+      const parts = await fetchPartRecordsByEquipmentId(id);
+      setPartRecords(parts);
+    } catch (error) {
+      console.error("Error fetching parts history:", error);
+    }
   };
 
   if (loading) return <CircularProgress />;
   if (!equipment) return <Typography>No equipment found.</Typography>;
 
   return (
-    <Box>
-      <Typography variant="h4" fontWeight={600} mb={2}>
-        {equipment.name}
-      </Typography>
+    <Box sx={{ p: 3 }}>
+      {/* Top Buttons */}
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ mb: 3 }}
+      >
+        <Button variant="outlined" onClick={() => navigate("/equipment")}>
+          Back to Equipment List
+        </Button>
 
-      <Paper sx={{ mb: 2 }}>
-        <Tabs value={tab} onChange={handleTabChange}>
-          <Tab label="Overview" />
-          <Tab label="Service History" />
-          <Tab label="Parts History" />
-          <Tab label="Damage Log" />
-        </Tabs>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => setEditOpen(true)}
+        >
+          Edit
+        </Button>
+      </Stack>
+
+      {/* Equipment Information */}
+      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h5" fontWeight={600} sx={{ mb: 2 }}>
+          {equipment.name}
+        </Typography>
+
+        <Divider sx={{ mb: 2 }} />
+
+        {/* Core Fields */}
+        <Box sx={{ mb: 2 }}>
+          <Typography>
+            <strong>Category:</strong> {equipment.category}
+          </Typography>
+          <Typography>
+            <strong>Make:</strong> {equipment.make}
+          </Typography>
+          <Typography>
+            <strong>Model Number:</strong> {equipment.modelNumber}
+          </Typography>
+          <Typography>
+            <strong>Serial Number:</strong> {equipment.serialNumber}
+          </Typography>
+          <Typography>
+            <strong>Status:</strong> {equipment.status}
+          </Typography>
+          <Typography>
+            <strong>Location:</strong> {equipment.location}
+          </Typography>
+          {equipment.notes && (
+            <Typography>
+              <strong>Notes:</strong> {equipment.notes}
+            </Typography>
+          )}
+        </Box>
+
+        {/* Optional Legal Info */}
+        {equipment.legal &&
+          (equipment.legal.licensePlate || equipment.legal.insuranceInfo) && (
+            <Box sx={{ mb: 2 }}>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle1" fontWeight={600}>
+                Legal Info
+              </Typography>
+              {equipment.legal.licensePlate && (
+                <Typography>
+                  <strong>License Plate:</strong> {equipment.legal.licensePlate}
+                </Typography>
+              )}
+              {equipment.legal.insuranceInfo && (
+                <Typography>
+                  <strong>Insurance Info:</strong>{" "}
+                  {equipment.legal.insuranceInfo}
+                </Typography>
+              )}
+            </Box>
+          )}
+
+        {/* Optional Engine Info */}
+        {equipment.engine &&
+          (equipment.engine.serialNumber || equipment.engine.modelNumber) && (
+            <Box sx={{ mb: 2 }}>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle1" fontWeight={600}>
+                Engine Info
+              </Typography>
+              {equipment.engine.serialNumber && (
+                <Typography>
+                  <strong>Engine Serial Number:</strong>{" "}
+                  {equipment.engine.serialNumber}
+                </Typography>
+              )}
+              {equipment.engine.modelNumber && (
+                <Typography>
+                  <strong>Engine Model Number:</strong>{" "}
+                  {equipment.engine.modelNumber}
+                </Typography>
+              )}
+            </Box>
+          )}
       </Paper>
 
-      {/* Overview Tab */}
-      {tab === 0 && (
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Equipment Details
+      {/* Service History Section */}
+      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{ mb: 2 }}
+        >
+          <Typography variant="h6" fontWeight={600}>
+            Service History
           </Typography>
-          <Divider sx={{ mb: 2 }} />
-          <Grid container spacing={2} {...({} as any)}>
-            <Grid item xs={12} sm={6} {...({} as any)}>
-              <Typography>
-                <strong>Make:</strong> {equipment.make}
-              </Typography>
-              <Typography>
-                <strong>Model:</strong> {equipment.modelNumber}
-              </Typography>
-              <Typography>
-                <strong>Serial:</strong> {equipment.serialNumber}
-              </Typography>
-              <Typography>
-                <strong>Category:</strong> {equipment.category}
-              </Typography>
-              <Typography>
-                <strong>Status:</strong> {equipment.status}
-              </Typography>
-              <Typography>
-                <strong>Location:</strong> {equipment.location}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6} {...({} as any)}>
-              <Typography>
-                <strong>License Plate:</strong>{" "}
-                {equipment.legal?.licensePlate || "—"}
-              </Typography>
-              <Typography>
-                <strong>Insurance Info:</strong>{" "}
-                {equipment.legal?.insuranceInfo || "—"}
-              </Typography>
-              <Typography>
-                <strong>Engine Serial:</strong>{" "}
-                {equipment.engine?.serialNumber || "—"}
-              </Typography>
-              <Typography>
-                <strong>Engine Model:</strong>{" "}
-                {equipment.engine?.modelNumber || "—"}
-              </Typography>
-              <Typography>
-                <strong>Notes:</strong> {equipment.notes || "—"}
-              </Typography>
-            </Grid>
-          </Grid>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => setServiceFormOpen(true)}
+          >
+            Add Service Record
+          </Button>
+        </Stack>
 
-          <Divider sx={{ my: 3 }} />
+        {serviceRecords.length > 0 ? (
+          serviceRecords.map((record, index) => (
+            <Box key={index} sx={{ mb: 2 }}>
+              <Typography>
+                <strong>Date:</strong>{" "}
+                {new Date(record.date).toLocaleDateString()}
+              </Typography>
+              <Typography>
+                <strong>Service:</strong> {record.serviceType}
+              </Typography>
+              {record.notes && (
+                <Typography>
+                  <strong>Notes:</strong> {record.notes}
+                </Typography>
+              )}
+              {index !== serviceRecords.length - 1 && (
+                <Divider sx={{ my: 2 }} />
+              )}
+            </Box>
+          ))
+        ) : (
+          <Typography>No service records found.</Typography>
+        )}
+      </Paper>
 
-          <Typography variant="h6">Additional Info</Typography>
-          <Grid container spacing={2} {...({} as any)}>
-            <Grid item xs={12} sm={4} {...({} as any)}>
-              <TextField
-                label="Net Weight (kg)"
-                fullWidth
-                value={netWeight}
-                onChange={(e) => setNetWeight(e.target.value)}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4} {...({} as any)}>
-              <TextField
-                label="Gross Weight (kg)"
-                fullWidth
-                value={grossWeight}
-                onChange={(e) => setGrossWeight(e.target.value)}
-              />
-            </Grid>
-            <Grid item xs={12} {...({} as any)}>
-              <TextField
-                label="Description"
-                fullWidth
-                multiline
-                rows={3}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </Grid>
-          </Grid>
-
-          <Box mt={2}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleSaveInfo}
-            >
-              Save Additional Info
-            </Button>
-          </Box>
-        </Paper>
-      )}
-
-      {/* Damage Tab */}
-      {tab === 3 && (
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Report Damage
+      {/* Parts Installed Section */}
+      <Paper elevation={3} sx={{ p: 3 }}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{ mb: 2 }}
+        >
+          <Typography variant="h6" fontWeight={600}>
+            Parts Installed
           </Typography>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => setPartsFormOpen(true)}
+          >
+            Add Part Record
+          </Button>
+        </Stack>
 
-          <Grid container spacing={2} {...({} as any)}>
-            <Grid item xs={12} sm={6} {...({} as any)}>
-              <TextField
-                label="Damaged Part Name"
-                fullWidth
-                value={damage.partName}
-                onChange={(e) =>
-                  setDamage({ ...damage, partName: e.target.value })
-                }
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} {...({} as any)}>
-              <TextField
-                label="Part Number"
-                fullWidth
-                value={damage.partNumber}
-                onChange={(e) =>
-                  setDamage({ ...damage, partNumber: e.target.value })
-                }
-              />
-            </Grid>
+        {partRecords.length > 0 ? (
+          partRecords.map((record, index) => (
+            <Box key={index} sx={{ mb: 2 }}>
+              <Typography>
+                <strong>Date Installed:</strong>{" "}
+                {new Date(record.dateInstalled).toLocaleDateString()}
+              </Typography>
+              <Typography>
+                <strong>Part:</strong> {record.partName}
+              </Typography>
+              {record.notes && (
+                <Typography>
+                  <strong>Notes:</strong> {record.notes}
+                </Typography>
+              )}
+              {record.cost !== undefined && (
+                <Typography>
+                  <strong>Cost:</strong> ${record.cost.toFixed(2)}
+                </Typography>
+              )}
+              {index !== partRecords.length - 1 && <Divider sx={{ my: 2 }} />}
+            </Box>
+          ))
+        ) : (
+          <Typography>No parts installed yet.</Typography>
+        )}
+      </Paper>
 
-            <Grid item xs={12} sm={4} {...({} as any)}>
-              <TextField
-                label="Supplier 1"
-                fullWidth
-                value={damage.supplier1}
-                onChange={(e) =>
-                  setDamage({ ...damage, supplier1: e.target.value })
-                }
-              />
-              <TextField
-                label="Price"
-                type="number"
-                fullWidth
-                sx={{ mt: 1 }}
-                value={damage.price1}
-                onChange={(e) =>
-                  setDamage({ ...damage, price1: e.target.value })
-                }
-              />
-            </Grid>
+      {/* Modals */}
+      <EquipmentEditModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        equipment={equipment}
+        onSaved={() => {
+          setEditOpen(false);
+          setLoading(true);
+          fetchEquipment();
+        }}
+      />
 
-            <Grid item xs={12} sm={4} {...({} as any)}>
-              <TextField
-                label="Supplier 2"
-                fullWidth
-                value={damage.supplier2}
-                onChange={(e) =>
-                  setDamage({ ...damage, supplier2: e.target.value })
-                }
-              />
-              <TextField
-                label="Price"
-                type="number"
-                fullWidth
-                sx={{ mt: 1 }}
-                value={damage.price2}
-                onChange={(e) =>
-                  setDamage({ ...damage, price2: e.target.value })
-                }
-              />
-            </Grid>
+      <ServiceRecordForm
+        open={serviceFormOpen}
+        onClose={() => setServiceFormOpen(false)}
+        equipmentId={equipment.id!}
+        onSaved={() => {
+          setServiceFormOpen(false);
+          fetchServiceHistory();
+        }}
+      />
 
-            <Grid item xs={12} sm={4} {...({} as any)}>
-              <TextField
-                label="Supplier 3"
-                fullWidth
-                value={damage.supplier3}
-                onChange={(e) =>
-                  setDamage({ ...damage, supplier3: e.target.value })
-                }
-              />
-              <TextField
-                label="Price"
-                type="number"
-                fullWidth
-                sx={{ mt: 1 }}
-                value={damage.price3}
-                onChange={(e) =>
-                  setDamage({ ...damage, price3: e.target.value })
-                }
-              />
-            </Grid>
-          </Grid>
-
-          <Box mt={2}>
-            <Button
-              variant="contained"
-              color="error"
-              onClick={handleSaveDamage}
-            >
-              Save Damage Report
-            </Button>
-          </Box>
-        </Paper>
-      )}
+      <PartsRecordForm
+        open={partsFormOpen}
+        onClose={() => setPartsFormOpen(false)}
+        equipmentId={equipment.id!}
+        onSaved={() => {
+          setPartsFormOpen(false);
+          fetchPartsHistory();
+        }}
+      />
     </Box>
   );
 };

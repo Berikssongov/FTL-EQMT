@@ -86,7 +86,7 @@ const Header: React.FC = () => {
 const Dashboard: React.FC = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
-      <Typography variant="h5" sx={{ fontWeight: 500, mb: 2 }}>
+      <Typography variant="h4" sx={{ fontWeight: 500, mb: 2 }}>
         Dashboard
       </Typography>
       <Typography variant="body1" color="textSecondary">
