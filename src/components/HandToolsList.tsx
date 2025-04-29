@@ -1,76 +1,73 @@
-// src/components/HandToolsList.tsx
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Box,
-  Typography,
   Paper,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
   TableHead,
+  TableBody,
   TableRow,
-  Button,
+  TableCell,
   IconButton,
+  Typography,
+  Box,
+  CircularProgress,
+  Button,
 } from "@mui/material";
-import { Edit as EditIcon } from "@mui/icons-material";
+import EditIcon from "@mui/icons-material/Edit";
+import AddIcon from "@mui/icons-material/Add";
+
 import { fetchHandTools } from "../services/handToolsService";
 import { HandTool } from "../types";
+import EditHandToolModal from "./EditHandToolsModal";
 import AddHandToolModal from "./AddHandToolModal";
-import EditHandToolQuantityModal from "./EditHandToolQuantityModal"; // ✅ Import
 
 const HandToolsList: React.FC = () => {
   const [tools, setTools] = useState<HandTool[]>([]);
-  const [addModalOpen, setAddModalOpen] = useState(false);
-
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [selectedToolId, setSelectedToolId] = useState<string | null>(null);
-  const [selectedToolQuantity, setSelectedToolQuantity] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+  const [selectedTool, setSelectedTool] = useState<HandTool | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
-    loadHandTools();
+    loadTools();
   }, []);
 
-  const loadHandTools = async () => {
-    try {
-      const data = await fetchHandTools();
-      setTools(data);
-    } catch (error) {
-      console.error("Error fetching hand tools:", error);
-    }
+  const loadTools = async () => {
+    setLoading(true);
+    const data = await fetchHandTools();
+    setTools(data);
+    setLoading(false);
   };
 
-  const handleEditClick = (toolId: string, quantity: number) => {
-    setSelectedToolId(toolId);
-    setSelectedToolQuantity(quantity);
-    setEditModalOpen(true);
+  const handleEdit = (tool: HandTool) => {
+    setSelectedTool(tool);
+    setEditOpen(true);
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h5" fontWeight={600} sx={{ mb: 2 }}>
-        Hand Tools Inventory
-      </Typography>
+    <Box>
+      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+        <Typography variant="h5">Hand Tools Inventory</Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setAddOpen(true)}
+        >
+          Add Tool
+        </Button>
+      </Box>
 
-      <Button
-        variant="contained"
-        sx={{ mb: 2 }}
-        onClick={() => setAddModalOpen(true)}
-      >
-        Add Hand Tool
-      </Button>
-
-      <Paper>
-        <TableContainer>
+      {loading ? (
+        <CircularProgress />
+      ) : (
+        <Paper>
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
+                <TableCell>Tool</TableCell>
                 <TableCell>Location</TableCell>
                 <TableCell>Condition</TableCell>
                 <TableCell>Quantity</TableCell>
-                <TableCell align="center">Edit</TableCell>{" "}
-                {/* ✅ New Edit column */}
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -80,10 +77,8 @@ const HandToolsList: React.FC = () => {
                   <TableCell>{tool.location}</TableCell>
                   <TableCell>{tool.condition}</TableCell>
                   <TableCell>{tool.quantity}</TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      onClick={() => handleEditClick(tool.id!, tool.quantity)}
-                    >
+                  <TableCell align="right">
+                    <IconButton onClick={() => handleEdit(tool)}>
                       <EditIcon />
                     </IconButton>
                   </TableCell>
@@ -91,26 +86,26 @@ const HandToolsList: React.FC = () => {
               ))}
             </TableBody>
           </Table>
-        </TableContainer>
-      </Paper>
+        </Paper>
+      )}
 
-      {/* Add Hand Tool Modal */}
-      <AddHandToolModal
-        open={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        onSaved={loadHandTools}
-      />
-
-      {/* Edit Hand Tool Quantity Modal */}
-      {selectedToolId && (
-        <EditHandToolQuantityModal
-          open={editModalOpen}
-          onClose={() => setEditModalOpen(false)}
-          toolId={selectedToolId}
-          currentQuantity={selectedToolQuantity}
-          onSaved={loadHandTools}
+      {selectedTool && (
+        <EditHandToolModal
+          open={editOpen}
+          onClose={() => {
+            setEditOpen(false);
+            setSelectedTool(null);
+          }}
+          tool={selectedTool}
+          onSaved={loadTools}
         />
       )}
+
+      <AddHandToolModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onSaved={loadTools}
+      />
     </Box>
   );
 };

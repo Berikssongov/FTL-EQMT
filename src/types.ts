@@ -10,6 +10,7 @@ export interface Equipment {
   modelNumber: string;
   lastInspection?: string;
   assignedTo?: string;
+  condition: string;
 
   netWeight?: string;
   grossWeight?: string;

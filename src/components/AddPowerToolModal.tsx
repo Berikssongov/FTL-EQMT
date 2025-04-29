@@ -1,4 +1,3 @@
-// src/components/AddPowerToolModal.tsx
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -9,51 +8,38 @@ import {
   TextField,
   MenuItem,
   Grid,
-  CircularProgress,
 } from "@mui/material";
 
+import { PowerTool, Location } from "../types";
 import { addPowerTool } from "../services/powerToolsService";
 import { fetchLocations } from "../services/locationsService";
-import { Location } from "../types";
 
-interface AddPowerToolModalProps {
+interface Props {
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
 
-const AddPowerToolModal: React.FC<AddPowerToolModalProps> = ({
-  open,
-  onClose,
-  onSaved,
-}) => {
-  const [form, setForm] = useState({
+const AddPowerToolModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
+  const [form, setForm] = useState<PowerTool>({
     name: "",
     location: "",
     serialNumber: "",
-    condition: "",
+    condition: "Good",
   });
-  const [saving, setSaving] = useState(false);
+
   const [locations, setLocations] = useState<Location[]>([]);
 
   useEffect(() => {
-    if (open) {
-      loadLocations();
-    }
+    if (open) loadLocations();
   }, [open]);
 
   const loadLocations = async () => {
-    try {
-      const data = await fetchLocations();
-      setLocations(data);
-    } catch (error) {
-      console.error("Error fetching locations:", error);
-    }
+    const data = await fetchLocations();
+    setLocations(data);
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
@@ -62,28 +48,20 @@ const AddPowerToolModal: React.FC<AddPowerToolModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    try {
-      setSaving(true);
-      await addPowerTool({
-        name: form.name,
-        location: form.location,
-        serialNumber: form.serialNumber,
-        condition: form.condition,
-      });
-      onSaved();
-      onClose();
-      setForm({ name: "", location: "", serialNumber: "", condition: "" });
-    } catch (error) {
-      console.error("Error adding power tool:", error);
-    } finally {
-      setSaving(false);
-    }
+    await addPowerTool(form);
+    onSaved();
+    onClose();
+    setForm({
+      name: "",
+      location: "",
+      serialNumber: "",
+      condition: "Good",
+    });
   };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Add Power Tool</DialogTitle>
-
       <DialogContent dividers>
         <Grid container spacing={2} {...({} as any)}>
           <Grid item xs={12} {...({} as any)}>
@@ -97,12 +75,11 @@ const AddPowerToolModal: React.FC<AddPowerToolModalProps> = ({
             />
           </Grid>
 
-          {/* Location Dropdown */}
           <Grid item xs={12} {...({} as any)}>
             <TextField
-              select
               label="Location"
               name="location"
+              select
               fullWidth
               variant="outlined"
               value={form.location}
@@ -131,24 +108,26 @@ const AddPowerToolModal: React.FC<AddPowerToolModalProps> = ({
             <TextField
               label="Condition"
               name="condition"
+              select
               fullWidth
               variant="outlined"
               value={form.condition}
               onChange={handleChange}
-            />
+            >
+              <MenuItem value="Excellent">Excellent</MenuItem>
+              <MenuItem value="Good">Good</MenuItem>
+              <MenuItem value="Fair">Fair</MenuItem>
+              <MenuItem value="Poor">Poor</MenuItem>
+              <MenuItem value="Broken">Broken</MenuItem>
+            </TextField>
           </Grid>
         </Grid>
       </DialogContent>
 
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button
-          onClick={handleSubmit}
-          variant="contained"
-          color="primary"
-          disabled={saving}
-        >
-          {saving ? <CircularProgress size={24} /> : "Save"}
+        <Button onClick={handleSubmit} variant="contained">
+          Save
         </Button>
       </DialogActions>
     </Dialog>

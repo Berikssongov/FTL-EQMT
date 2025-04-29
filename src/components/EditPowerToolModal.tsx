@@ -1,4 +1,3 @@
-// src/components/EditPowerToolModal.tsx
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -35,23 +34,15 @@ const EditPowerToolModal: React.FC<EditPowerToolModalProps> = ({
 
   useEffect(() => {
     setForm(tool);
-    if (open) {
-      loadLocations();
-    }
+    if (open) loadLocations();
   }, [tool, open]);
 
   const loadLocations = async () => {
-    try {
-      const data = await fetchLocations();
-      setLocations(data);
-    } catch (error) {
-      console.error("Error fetching locations:", error);
-    }
+    const data = await fetchLocations();
+    setLocations(data);
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
@@ -60,25 +51,18 @@ const EditPowerToolModal: React.FC<EditPowerToolModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    try {
-      setSaving(true);
-      await updatePowerTool(form.id!, form);
-      onSaved();
-      onClose();
-    } catch (error) {
-      console.error("Error updating power tool:", error);
-    } finally {
-      setSaving(false);
-    }
+    setSaving(true);
+    await updatePowerTool(form.id!, form);
+    onSaved();
+    onClose();
+    setSaving(false);
   };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Edit Power Tool</DialogTitle>
-
       <DialogContent dividers>
         <Grid container spacing={2} {...({} as any)}>
-          {/* Name */}
           <Grid item xs={12} {...({} as any)}>
             <TextField
               label="Tool Name"
@@ -90,15 +74,13 @@ const EditPowerToolModal: React.FC<EditPowerToolModalProps> = ({
             />
           </Grid>
 
-          {/* Location Dropdown */}
           <Grid item xs={12} {...({} as any)}>
             <TextField
-              select
               label="Location"
               name="location"
+              select
               fullWidth
               variant="outlined"
-              sx={{ minWidth: "200px" }}
               value={form.location}
               onChange={handleChange}
             >
@@ -110,7 +92,6 @@ const EditPowerToolModal: React.FC<EditPowerToolModalProps> = ({
             </TextField>
           </Grid>
 
-          {/* Serial Number */}
           <Grid item xs={12} {...({} as any)}>
             <TextField
               label="Serial Number"
@@ -122,16 +103,22 @@ const EditPowerToolModal: React.FC<EditPowerToolModalProps> = ({
             />
           </Grid>
 
-          {/* Condition */}
           <Grid item xs={12} {...({} as any)}>
             <TextField
               label="Condition"
               name="condition"
+              select
               fullWidth
               variant="outlined"
               value={form.condition}
               onChange={handleChange}
-            />
+            >
+              <MenuItem value="Excellent">Excellent</MenuItem>
+              <MenuItem value="Good">Good</MenuItem>
+              <MenuItem value="Fair">Fair</MenuItem>
+              <MenuItem value="Poor">Poor</MenuItem>
+              <MenuItem value="Broken">Broken</MenuItem>
+            </TextField>
           </Grid>
         </Grid>
       </DialogContent>

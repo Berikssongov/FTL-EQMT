@@ -1,61 +1,73 @@
-// src/components/PowerToolsList.tsx
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Box,
-  Typography,
   Paper,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
   TableHead,
+  TableBody,
   TableRow,
+  TableCell,
+  IconButton,
+  Typography,
+  Box,
+  CircularProgress,
   Button,
 } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import AddIcon from "@mui/icons-material/Add";
+
 import { fetchPowerTools } from "../services/powerToolsService";
 import { PowerTool } from "../types";
-import AddPowerToolModal from "./AddPowerToolModal"; // ✅ Import the modal
+import EditPowerToolModal from "./EditPowerToolModal";
+import AddPowerToolModal from "./AddPowerToolModal";
 
 const PowerToolsList: React.FC = () => {
   const [tools, setTools] = useState<PowerTool[]>([]);
-  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [selectedTool, setSelectedTool] = useState<PowerTool | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
-    loadPowerTools();
+    loadTools();
   }, []);
 
-  const loadPowerTools = async () => {
-    try {
-      const data = await fetchPowerTools();
-      setTools(data);
-    } catch (error) {
-      console.error("Error fetching power tools:", error);
-    }
+  const loadTools = async () => {
+    setLoading(true);
+    const data = await fetchPowerTools();
+    setTools(data);
+    setLoading(false);
+  };
+
+  const handleEdit = (tool: PowerTool) => {
+    setSelectedTool(tool);
+    setEditOpen(true);
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h5" fontWeight={600} sx={{ mb: 2 }}>
-        Power Tools Inventory
-      </Typography>
+    <Box>
+      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+        <Typography variant="h5">Power Tools Inventory</Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setAddOpen(true)}
+        >
+          Add Tool
+        </Button>
+      </Box>
 
-      <Button
-        variant="contained"
-        sx={{ mb: 2 }}
-        onClick={() => setAddModalOpen(true)}
-      >
-        Add Power Tool
-      </Button>
-
-      <Paper>
-        <TableContainer>
+      {loading ? (
+        <CircularProgress />
+      ) : (
+        <Paper>
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
+                <TableCell>Tool</TableCell>
                 <TableCell>Location</TableCell>
-                <TableCell>Serial Number</TableCell>
+                <TableCell>Serial #</TableCell>
                 <TableCell>Condition</TableCell>
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -63,20 +75,36 @@ const PowerToolsList: React.FC = () => {
                 <TableRow key={tool.id}>
                   <TableCell>{tool.name}</TableCell>
                   <TableCell>{tool.location}</TableCell>
-                  <TableCell>{tool.serialNumber}</TableCell>
+                  <TableCell>{tool.serialNumber || "—"}</TableCell>
                   <TableCell>{tool.condition}</TableCell>
+                  <TableCell align="right">
+                    <IconButton onClick={() => handleEdit(tool)}>
+                      <EditIcon />
+                    </IconButton>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </TableContainer>
-      </Paper>
+        </Paper>
+      )}
 
-      {/* Add Power Tool Modal */}
+      {selectedTool && (
+        <EditPowerToolModal
+          open={editOpen}
+          onClose={() => {
+            setEditOpen(false);
+            setSelectedTool(null);
+          }}
+          tool={selectedTool}
+          onSaved={loadTools}
+        />
+      )}
+
       <AddPowerToolModal
-        open={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        onSaved={loadPowerTools}
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onSaved={loadTools}
       />
     </Box>
   );
