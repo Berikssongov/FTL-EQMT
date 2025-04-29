@@ -1,4 +1,3 @@
-// src/components/EquipmentEditModal.tsx
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -9,9 +8,9 @@ import {
   TextField,
   MenuItem,
   Grid,
-  CircularProgress,
   Divider,
   Typography,
+  CircularProgress,
 } from "@mui/material";
 
 import { Equipment, Location } from "../types";
@@ -37,18 +36,12 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
 
   useEffect(() => {
     setForm(equipment);
-    if (open) {
-      loadLocations();
-    }
+    if (open) loadLocations();
   }, [equipment, open]);
 
   const loadLocations = async () => {
-    try {
-      const data = await fetchLocations();
-      setLocations(data);
-    } catch (error) {
-      console.error("Error fetching locations:", error);
-    }
+    const data = await fetchLocations();
+    setLocations(data);
   };
 
   const handleChange = (
@@ -60,19 +53,13 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
       const field = name.split(".")[1];
       setForm((prev) => ({
         ...prev,
-        legal: {
-          ...prev.legal,
-          [field]: value,
-        },
+        legal: { ...prev.legal, [field]: value },
       }));
     } else if (name.startsWith("engine.")) {
       const field = name.split(".")[1];
       setForm((prev) => ({
         ...prev,
-        engine: {
-          ...prev.engine,
-          [field]: value,
-        },
+        engine: { ...prev.engine, [field]: value },
       }));
     } else {
       setForm((prev) => ({
@@ -83,37 +70,24 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    try {
-      setSaving(true);
-      await updateEquipment(form.id!, form);
-      onSaved();
-      onClose();
-    } catch (error) {
-      console.error("Error updating equipment:", error);
-    } finally {
-      setSaving(false);
-    }
+    setSaving(true);
+    await updateEquipment(form.id!, form);
+    onSaved();
+    onClose();
+    setSaving(false);
   };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>Edit Equipment</DialogTitle>
-
       <DialogContent dividers>
         <Grid container spacing={2} {...({} as any)}>
-          {/* Core Info */}
-          <Grid item xs={12} {...({} as any)}>
-            <Typography variant="h6" fontWeight={600}>
-              Core Information
-            </Typography>
-          </Grid>
-
+          {/* Core */}
           <Grid item xs={12} sm={6} {...({} as any)}>
             <TextField
               label="Name"
               name="name"
               fullWidth
-              variant="outlined"
               value={form.name}
               onChange={handleChange}
             />
@@ -125,14 +99,12 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
               name="category"
               select
               fullWidth
-              variant="outlined"
-              sx={{ minWidth: "200px" }}
               value={form.category}
               onChange={handleChange}
             >
+              <MenuItem value="equipment">Equipment</MenuItem>
               <MenuItem value="vehicle">Vehicle</MenuItem>
               <MenuItem value="trailer">Trailer</MenuItem>
-              <MenuItem value="equipment">Equipment</MenuItem>
               <MenuItem value="landscaping">Landscaping</MenuItem>
             </TextField>
           </Grid>
@@ -142,7 +114,6 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
               label="Make"
               name="make"
               fullWidth
-              variant="outlined"
               value={form.make}
               onChange={handleChange}
             />
@@ -153,7 +124,6 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
               label="Model Number"
               name="modelNumber"
               fullWidth
-              variant="outlined"
               value={form.modelNumber}
               onChange={handleChange}
             />
@@ -164,7 +134,6 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
               label="Serial Number"
               name="serialNumber"
               fullWidth
-              variant="outlined"
               value={form.serialNumber}
               onChange={handleChange}
             />
@@ -175,21 +144,34 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
               label="Status"
               name="status"
               fullWidth
-              variant="outlined"
               value={form.status}
               onChange={handleChange}
             />
           </Grid>
 
-          {/* Location Dropdown */}
-          <Grid item xs={12} {...({} as any)}>
+          <Grid item xs={12} sm={6} {...({} as any)}>
             <TextField
+              label="Condition"
+              name="condition"
               select
+              fullWidth
+              value={form.condition}
+              onChange={handleChange}
+            >
+              <MenuItem value="Excellent">Excellent</MenuItem>
+              <MenuItem value="Good">Good</MenuItem>
+              <MenuItem value="Fair">Fair</MenuItem>
+              <MenuItem value="Poor">Poor</MenuItem>
+              <MenuItem value="Broken">Broken</MenuItem>
+            </TextField>
+          </Grid>
+
+          <Grid item xs={12} sm={6} {...({} as any)}>
+            <TextField
               label="Location"
               name="location"
+              select
               fullWidth
-              variant="outlined"
-              sx={{ minWidth: "200px" }}
               value={form.location}
               onChange={handleChange}
             >
@@ -208,13 +190,12 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
               fullWidth
               multiline
               rows={3}
-              variant="outlined"
               value={form.notes}
               onChange={handleChange}
             />
           </Grid>
 
-          {/* Divider for Legal Info */}
+          {/* Legal Info */}
           <Grid item xs={12} {...({} as any)}>
             <Divider sx={{ my: 2 }} />
             <Typography variant="h6" fontWeight={600}>
@@ -227,7 +208,6 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
               label="License Plate"
               name="legal.licensePlate"
               fullWidth
-              variant="outlined"
               value={form.legal?.licensePlate || ""}
               onChange={handleChange}
             />
@@ -238,13 +218,12 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
               label="Insurance Info"
               name="legal.insuranceInfo"
               fullWidth
-              variant="outlined"
               value={form.legal?.insuranceInfo || ""}
               onChange={handleChange}
             />
           </Grid>
 
-          {/* Divider for Engine Info */}
+          {/* Engine Info */}
           <Grid item xs={12} {...({} as any)}>
             <Divider sx={{ my: 2 }} />
             <Typography variant="h6" fontWeight={600}>
@@ -257,7 +236,6 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
               label="Engine Serial Number"
               name="engine.serialNumber"
               fullWidth
-              variant="outlined"
               value={form.engine?.serialNumber || ""}
               onChange={handleChange}
             />
@@ -268,38 +246,7 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
               label="Engine Model Number"
               name="engine.modelNumber"
               fullWidth
-              variant="outlined"
               value={form.engine?.modelNumber || ""}
-              onChange={handleChange}
-            />
-          </Grid>
-
-          {/* Divider for Specs */}
-          <Grid item xs={12} {...({} as any)}>
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="h6" fontWeight={600}>
-              Equipment Specifications
-            </Typography>
-          </Grid>
-
-          <Grid item xs={12} sm={6} {...({} as any)}>
-            <TextField
-              label="Weight Capacity (lbs)"
-              name="weightCapacity"
-              fullWidth
-              variant="outlined"
-              value={(form as any).weightCapacity || ""}
-              onChange={handleChange}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6} {...({} as any)}>
-            <TextField
-              label="Towing Capacity (lbs)"
-              name="towingCapacity"
-              fullWidth
-              variant="outlined"
-              value={(form as any).towingCapacity || ""}
               onChange={handleChange}
             />
           </Grid>

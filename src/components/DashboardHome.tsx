@@ -1,10 +1,56 @@
-// src/components/DashboardHome.tsx
-import React from "react";
-import { Box, Grid, Paper, Typography, Button, Stack } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import {
+  Box,
+  Grid,
+  Typography,
+  CircularProgress,
+  Paper,
+  Divider,
+} from "@mui/material";
+
+import InventoryIcon from "@mui/icons-material/Warehouse";
+import WarningIcon from "@mui/icons-material/ReportProblem";
+import BuildIcon from "@mui/icons-material/Build";
+import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturing";
+
+import DashboardStatsCard from "./DashboardStatsCard";
+import BrokenItemsReport from "./BrokenItemsReport";
+
+import { fetchEquipment } from "../services/equipmentServices";
+import { fetchHandTools } from "../services/handToolsService";
+import { fetchPowerTools } from "../services/powerToolsService";
 
 const DashboardHome: React.FC = () => {
-  const navigate = useNavigate();
+  const [equipmentCount, setEquipmentCount] = useState<number>(0);
+  const [brokenCount, setBrokenCount] = useState<number>(0);
+  const [handToolsCount, setHandToolsCount] = useState<number>(0);
+  const [powerToolsCount, setPowerToolsCount] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+
+    const [equipment, handTools, powerTools] = await Promise.all([
+      fetchEquipment(),
+      fetchHandTools(),
+      fetchPowerTools(),
+    ]);
+
+    setEquipmentCount(equipment.length);
+    setBrokenCount(
+      equipment.filter((e) => e.condition === "Broken").length +
+      handTools.filter((t) => t.condition === "Broken").length +
+      powerTools.filter((t) => t.condition === "Broken").length
+    );
+    setHandToolsCount(handTools.length);
+    setPowerToolsCount(powerTools.length);
+
+    setLoading(false);
+  };
 
   return (
     <Box sx={{ p: 3 }}>
@@ -12,91 +58,52 @@ const DashboardHome: React.FC = () => {
         Dashboard
       </Typography>
 
-      {/* Equipment by Location */}
-      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-          Equipment by Location
-        </Typography>
-        {/* TODO: Add Equipment Table */}
-        <Typography color="textSecondary">
-          Equipment table will go here...
-        </Typography>
-      </Paper>
+      {loading ? (
+        <CircularProgress />
+      ) : (
+        <>
+          {/* 🧮 Summary Cards */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={12} sm={6} md={3} {...({} as any)}>
+              <DashboardStatsCard
+                title="Total Equipment"
+                value={equipmentCount}
+                icon={InventoryIcon}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3} {...({} as any)}>
+              <DashboardStatsCard
+                title="Broken Items"
+                value={brokenCount}
+                icon={WarningIcon}
+                color="#c62828"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3} {...({} as any)}>
+              <DashboardStatsCard
+                title="Hand Tools"
+                value={handToolsCount}
+                icon={BuildIcon}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3} {...({} as any)}>
+              <DashboardStatsCard
+                title="Power Tools"
+                value={powerToolsCount}
+                icon={PrecisionManufacturingIcon}
+              />
+            </Grid>
+          </Grid>
 
-      {/* Overdue Service + Damaged Equipment side-by-side */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={6} {...({} as any)}>
+          {/* ⚠️ Broken Items List */}
           <Paper elevation={3} sx={{ p: 3 }}>
             <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-              Overdue Service
+              Recently Marked as Broken
             </Typography>
-            {/* TODO: Add Overdue Service List */}
-            <Typography color="textSecondary">
-              Overdue equipment will go here...
-            </Typography>
+            <BrokenItemsReport />
           </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={6} {...({} as any)}>
-          <Paper elevation={3} sx={{ p: 3 }}>
-            <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-              Damaged Equipment
-            </Typography>
-            {/* TODO: Add Damaged Equipment List */}
-            <Typography color="textSecondary">
-              Damaged equipment will go here...
-            </Typography>
-          </Paper>
-        </Grid>
-      </Grid>
-
-      {/* Tools Section */}
-      <Grid container spacing={3} sx={{ mb: 3 }} {...({} as any)}>
-        <Grid item xs={12} md={6} {...({} as any)}>
-          <Paper elevation={3} sx={{ p: 3 }}>
-            <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-              Hand Tools
-            </Typography>
-            {/* TODO: Add Hand Tools List */}
-            <Typography color="textSecondary">
-              Hand tools list will go here...
-            </Typography>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={6} {...({} as any)}>
-          <Paper elevation={3} sx={{ p: 3 }}>
-            <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-              Power Tools
-            </Typography>
-            {/* TODO: Add Power Tools List */}
-            <Typography color="textSecondary">
-              Power tools list will go here...
-            </Typography>
-          </Paper>
-        </Grid>
-      </Grid>
-
-      {/* Quick Actions */}
-      <Paper elevation={3} sx={{ p: 3 }}>
-        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-          Quick Actions
-        </Typography>
-        <Stack direction="row" spacing={2}>
-          <Button variant="contained" onClick={() => navigate("/equipment")}>
-            View Equipment
-          </Button>
-          <Button variant="contained" onClick={() => {}}>
-            Add Equipment
-          </Button>
-          <Button variant="contained" onClick={() => {}}>
-            Add Service Record
-          </Button>
-          <Button variant="contained" onClick={() => {}}>
-            Add Tool
-          </Button>
-        </Stack>
-      </Paper>
+        </>
+      )}
     </Box>
   );
 };

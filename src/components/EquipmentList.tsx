@@ -96,14 +96,15 @@ const EquipmentList: React.FC = () => {
         </TableContainer>
       )}
 
-      <AddEquipmentModal
-        open={openModal}
-        onClose={() => setOpenModal(false)}
-        onAdded={() => {
-          loadEquipment(); // refresh the list after adding
-          setOpenModal(false);
-        }}
-      />
+<AddEquipmentModal
+  open={openModal}
+  onClose={() => setOpenModal(false)}
+  onSaved={() => {
+    loadEquipment(); // refresh the list after adding
+    setOpenModal(false);
+  }}
+/>
+
     </>
   );
 };
