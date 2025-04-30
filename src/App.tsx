@@ -30,6 +30,10 @@ import ManageLocationsPage from "./components/ManageLocationsPage"; // ✅ New
 
 import { Settings as SettingsIcon } from "@mui/icons-material"; // ✅ Gear icon
 
+import ServiceDetail from "./components/ServiceDetail";
+import PartDetail from "./components/PartDetail";
+
+
 // ---------- Header ----------
 const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -186,6 +190,18 @@ const App: React.FC = () => {
                 <ManageLocationsPage />
               </Container>
             }
+            />
+            <Route 
+            path="/service/:id" 
+            element={<ServiceDetail />
+            } 
+            />
+            <Route 
+            path="/parts/:id" 
+            element={<PartDetail />
+
+            }
+            
           />
         </Routes>
       </Box>

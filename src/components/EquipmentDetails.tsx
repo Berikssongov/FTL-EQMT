@@ -1,311 +1,282 @@
-// src/components/EquipmentDetails.tsx
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
 import {
   Typography,
-  Box,
   Paper,
+  Box,
+  Grid,
+  IconButton,
   Divider,
   CircularProgress,
   Button,
-  Stack,
 } from "@mui/material";
-
-import { Equipment } from "../types";
+import EditIcon from "@mui/icons-material/Edit";
+import { useParams, useNavigate } from "react-router-dom";
+import { Equipment, EquipmentServiceRecord, EquipmentPart } from "../types";
 import { getEquipmentById } from "../services/equipmentServices";
 import { fetchServiceRecordsByEquipmentId } from "../services/serviceRecordsService";
-import { ServiceRecord } from "../services/serviceRecordsService";
 import { fetchPartRecordsByEquipmentId } from "../services/partsRecordsService";
-import { PartRecord } from "../services/partsRecordsService";
 
 import EquipmentEditModal from "./EquipmentEditModal";
-import ServiceRecordForm from "./ServiceRecordForm";
-import PartsRecordForm from "./PartsRecordForm";
+import AddServiceModal from "./AddServiceModal";
+import AddPartModal from "./AddPartModal";
+
+import { ServiceRecord } from "../types"; // ✅ this must be present
+
 
 const EquipmentDetails: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-
   const [equipment, setEquipment] = useState<Equipment | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
-
-  const [serviceRecords, setServiceRecords] = useState<ServiceRecord[]>([]);
-  const [serviceFormOpen, setServiceFormOpen] = useState(false);
-
-  const [partRecords, setPartRecords] = useState<PartRecord[]>([]);
-  const [partsFormOpen, setPartsFormOpen] = useState(false);
+  const [serviceOpen, setServiceOpen] = useState(false);
+  const [partOpen, setPartOpen] = useState(false);
+  const [services, setServices] = useState<EquipmentServiceRecord[]>([]);
+  const [parts, setParts] = useState<EquipmentPart[]>([]);
 
   useEffect(() => {
     if (id) {
-      fetchEquipment();
-      fetchServiceHistory();
-      fetchPartsHistory();
+      loadEquipment(id);
+      loadServices(id);
+      loadParts(id);
     }
   }, [id]);
 
-  const fetchEquipment = async () => {
-    try {
-      if (!id) return;
-      const item = await getEquipmentById(id);
-      setEquipment(item);
-    } catch (error) {
-      console.error("Error fetching equipment:", error);
-    } finally {
-      setLoading(false);
-    }
+  const loadEquipment = async (equipmentId: string) => {
+    const data = await getEquipmentById(equipmentId);
+    setEquipment(data || null);
+    setLoading(false);
   };
 
-  const fetchServiceHistory = async () => {
-    if (!id) return;
-    try {
-      const records = await fetchServiceRecordsByEquipmentId(id);
-      setServiceRecords(records);
-    } catch (error) {
-      console.error("Error fetching service history:", error);
-    }
+  const loadServices = async (equipmentId: string) => {
+    const data = await fetchServiceRecordsByEquipmentId(equipmentId);
+    const formatted = data.map((svc) => ({
+      id: svc.id || "",
+      equipmentId: svc.equipmentId,
+      date: svc.date,
+      summary: svc.summary || "",
+      totalCost: svc.totalCost ?? 0,
+      items: svc.items || [],
+    }));
+    setServices(formatted);
   };
 
-  const fetchPartsHistory = async () => {
-    if (!id) return;
-    try {
-      const parts = await fetchPartRecordsByEquipmentId(id);
-      setPartRecords(parts);
-    } catch (error) {
-      console.error("Error fetching parts history:", error);
+  const loadParts = async (equipmentId: string) => {
+    const data = await fetchPartRecordsByEquipmentId(equipmentId);
+    const formatted = data.map((part) => ({
+      id: part.id || "",
+      equipmentId: part.equipmentId,
+      name: part.partName || "",
+      partNumber: part.partNumber || "",
+      vendor: part.vendor || "",
+      price: part.price ?? 0,
+    }));
+    setParts(formatted);
+  };
+
+  const reloadAll = () => {
+    if (id) {
+      loadEquipment(id);
+      loadServices(id);
+      loadParts(id);
     }
   };
 
   if (loading) return <CircularProgress />;
-  if (!equipment) return <Typography>No equipment found.</Typography>;
+  if (!equipment) return <Typography>Equipment not found.</Typography>;
 
   return (
-    <Box sx={{ p: 3 }}>
-      {/* Top Buttons */}
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{ mb: 3 }}
-      >
-        <Button variant="outlined" onClick={() => navigate("/equipment")}>
-          Back to Equipment List
-        </Button>
+    <Box>
+      <Button onClick={() => navigate("/equipment")} sx={{ mb: 2 }}>
+        ← Back to Equipment List
+      </Button>
 
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => setEditOpen(true)}
-        >
-          Edit
-        </Button>
-      </Stack>
-
-      {/* Equipment Information */}
-      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" fontWeight={600} sx={{ mb: 2 }}>
-          {equipment.name}
-        </Typography>
-
-        <Divider sx={{ mb: 2 }} />
-
-        {/* Core Fields */}
-        <Box sx={{ mb: 2 }}>
-          <Typography>
-            <strong>Category:</strong> {equipment.category}
+      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+          <Typography variant="h5" fontWeight={600}>
+            {equipment.name}
           </Typography>
-          <Typography>
-            <strong>Make:</strong> {equipment.make}
-          </Typography>
-          <Typography>
-            <strong>Model Number:</strong> {equipment.modelNumber}
-          </Typography>
-          <Typography>
-            <strong>Serial Number:</strong> {equipment.serialNumber}
-          </Typography>
-          <Typography>
-            <strong>Status:</strong> {equipment.status}
-          </Typography>
-          <Typography>
-            <strong>Location:</strong> {equipment.location}
-          </Typography>
-          {equipment.notes && (
-            <Typography>
-              <strong>Notes:</strong> {equipment.notes}
-            </Typography>
-          )}
+          <IconButton onClick={() => setEditOpen(true)} color="primary">
+            <EditIcon />
+          </IconButton>
         </Box>
 
-        {/* Optional Legal Info */}
-        {equipment.legal &&
-          (equipment.legal.licensePlate || equipment.legal.insuranceInfo) && (
-            <Box sx={{ mb: 2 }}>
-              <Divider sx={{ my: 2 }} />
-              <Typography variant="subtitle1" fontWeight={600}>
-                Legal Info
-              </Typography>
-              {equipment.legal.licensePlate && (
-                <Typography>
-                  <strong>License Plate:</strong> {equipment.legal.licensePlate}
-                </Typography>
-              )}
-              {equipment.legal.insuranceInfo && (
-                <Typography>
-                  <strong>Insurance Info:</strong>{" "}
-                  {equipment.legal.insuranceInfo}
-                </Typography>
-              )}
-            </Box>
-          )}
+        <Grid container spacing={2} {...({} as any)}>
+          <Grid item xs={12} md={6} {...({} as any)}>
+            <Typography><strong>Category:</strong> {equipment.category}</Typography>
+            <Typography><strong>Make:</strong> {equipment.make}</Typography>
+            <Typography><strong>Model #:</strong> {equipment.modelNumber}</Typography>
+            <Typography><strong>Serial #:</strong> {equipment.serialNumber}</Typography>
+            <Typography><strong>Status:</strong> {equipment.status}</Typography>
+            <Typography><strong>Condition:</strong> {equipment.condition}</Typography>
+            <Typography><strong>Location:</strong> {equipment.location}</Typography>
+          </Grid>
 
-        {/* Optional Engine Info */}
-        {equipment.engine &&
-          (equipment.engine.serialNumber || equipment.engine.modelNumber) && (
-            <Box sx={{ mb: 2 }}>
-              <Divider sx={{ my: 2 }} />
-              <Typography variant="subtitle1" fontWeight={600}>
-                Engine Info
+          <Grid item xs={12} md={6} {...({} as any)}>
+            {equipment.legal && (equipment.legal.licensePlate || equipment.legal.insuranceInfo) && (
+              <>
+                <Typography variant="subtitle1" fontWeight={600} sx={{ mt: 1 }}>
+                  Legal Information
+                </Typography>
+                {equipment.legal.licensePlate && (
+                  <Typography><strong>License Plate:</strong> {equipment.legal.licensePlate}</Typography>
+                )}
+                {equipment.legal.insuranceInfo && (
+                  <Typography><strong>Insurance Info:</strong> {equipment.legal.insuranceInfo}</Typography>
+                )}
+              </>
+            )}
+
+            {equipment.engine && (equipment.engine.serialNumber || equipment.engine.modelNumber) && (
+              <>
+                <Typography variant="subtitle1" fontWeight={600} sx={{ mt: 2 }}>
+                  Engine Information
+                </Typography>
+                {equipment.engine.serialNumber && (
+                  <Typography><strong>Engine Serial #:</strong> {equipment.engine.serialNumber}</Typography>
+                )}
+                {equipment.engine.modelNumber && (
+                  <Typography><strong>Engine Model #:</strong> {equipment.engine.modelNumber}</Typography>
+                )}
+              </>
+            )}
+
+            <Typography variant="subtitle1" fontWeight={600} sx={{ mt: 2 }}>
+              Specifications & Notes
+            </Typography>
+            {(equipment as any).weightCapacity && (
+              <Typography>
+                <strong>Weight Capacity:</strong> {(equipment as any).weightCapacity} lbs
               </Typography>
-              {equipment.engine.serialNumber && (
-                <Typography>
-                  <strong>Engine Serial Number:</strong>{" "}
-                  {equipment.engine.serialNumber}
-                </Typography>
-              )}
-              {equipment.engine.modelNumber && (
-                <Typography>
-                  <strong>Engine Model Number:</strong>{" "}
-                  {equipment.engine.modelNumber}
-                </Typography>
-              )}
-            </Box>
-          )}
+            )}
+            {(equipment as any).towingCapacity && (
+              <Typography>
+                <strong>Towing Capacity:</strong> {(equipment as any).towingCapacity} lbs
+              </Typography>
+            )}
+            {equipment.notes && (
+              <Typography><strong>Notes:</strong> {equipment.notes}</Typography>
+            )}
+          </Grid>
+        </Grid>
       </Paper>
 
-      {/* Service History Section */}
-      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-          sx={{ mb: 2 }}
-        >
-          <Typography variant="h6" fontWeight={600}>
-            Service History
-          </Typography>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => setServiceFormOpen(true)}
+      <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", width: "100%" }}>
+  {/* Service History */}
+  <Box sx={{ flex: "1 1 48%", minWidth: "300px" }}>
+    <Paper elevation={2} sx={{ p: 2, height: "100%" }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+        <Typography variant="h6" fontWeight={600}>Service History</Typography>
+        <Button variant="outlined" size="small" onClick={() => setServiceOpen(true)}>
+          + Add
+        </Button>
+      </Box>
+
+      {services.length === 0 ? (
+        <Typography color="textSecondary">No service records yet.</Typography>
+      ) : (
+        services.map((svc) => (
+          <Box
+            key={svc.id}
+            sx={{
+              mb: 2,
+              p: 1.5,
+              border: "1px solid #ccc",
+              borderRadius: 1,
+              cursor: "pointer",
+              transition: "0.2s ease",
+              "&:hover": { backgroundColor: "#f9f9f9" },
+            }}
+            onClick={() => navigate(`/service/${svc.id}`)}
           >
-            Add Service Record
-          </Button>
-        </Stack>
-
-        {serviceRecords.length > 0 ? (
-          serviceRecords.map((record, index) => (
-            <Box key={index} sx={{ mb: 2 }}>
-              <Typography>
-                <strong>Date:</strong>{" "}
-                {new Date(record.date).toLocaleDateString()}
+            <Typography fontWeight={600}>
+              {svc.summary || "Service Entry"}
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              {new Date(svc.date).toLocaleDateString()}
+            </Typography>
+            {svc.totalCost > 0 && (
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                <strong>Total:</strong> ${svc.totalCost.toFixed(2)}
               </Typography>
-              <Typography>
-                <strong>Service:</strong> {record.serviceType}
-              </Typography>
-              {record.notes && (
-                <Typography>
-                  <strong>Notes:</strong> {record.notes}
-                </Typography>
-              )}
-              {index !== serviceRecords.length - 1 && (
-                <Divider sx={{ my: 2 }} />
-              )}
-            </Box>
-          ))
-        ) : (
-          <Typography>No service records found.</Typography>
-        )}
-      </Paper>
+            )}
+          </Box>
+        ))
+      )}
+    </Paper>
+  </Box>
 
-      {/* Parts Installed Section */}
-      <Paper elevation={3} sx={{ p: 3 }}>
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-          sx={{ mb: 2 }}
-        >
-          <Typography variant="h6" fontWeight={600}>
-            Parts Installed
-          </Typography>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => setPartsFormOpen(true)}
+  {/* Parts */}
+  <Box sx={{ flex: "1 1 48%", minWidth: "300px" }}>
+    <Paper elevation={2} sx={{ p: 2, height: "100%" }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+        <Typography variant="h6" fontWeight={600}>Parts</Typography>
+        <Button variant="outlined" size="small" onClick={() => setPartOpen(true)}>
+          + Add
+        </Button>
+      </Box>
+
+      {parts.length === 0 ? (
+        <Typography color="textSecondary">No parts recorded yet.</Typography>
+      ) : (
+        parts.map((part) => (
+          <Box
+            key={part.id}
+            sx={{
+              mb: 2,
+              p: 1.5,
+              border: "1px solid #ccc",
+              borderRadius: 1,
+              cursor: "pointer",
+              transition: "0.2s ease",
+              "&:hover": { backgroundColor: "#f9f9f9" },
+            }}
+            onClick={() => navigate(`/parts/${part.id}`)}
           >
-            Add Part Record
-          </Button>
-        </Stack>
+            <Typography fontWeight={600}>{part.name}</Typography>
+            <Typography variant="body2" color="textSecondary">
+              Part #: {part.partNumber || "N/A"} — ${part.price?.toFixed(2) || "—"}
+            </Typography>
+            {part.vendor && (
+              <Typography variant="body2" color="textSecondary">
+                Vendor: {part.vendor}
+              </Typography>
+            )}
+          </Box>
+        ))
+      )}
+    </Paper>
+  </Box>
+</Box>
 
-        {partRecords.length > 0 ? (
-          partRecords.map((record, index) => (
-            <Box key={index} sx={{ mb: 2 }}>
-              <Typography>
-                <strong>Date Installed:</strong>{" "}
-                {new Date(record.dateInstalled).toLocaleDateString()}
-              </Typography>
-              <Typography>
-                <strong>Part:</strong> {record.partName}
-              </Typography>
-              {record.notes && (
-                <Typography>
-                  <strong>Notes:</strong> {record.notes}
-                </Typography>
-              )}
-              {record.cost !== undefined && (
-                <Typography>
-                  <strong>Cost:</strong> ${record.cost.toFixed(2)}
-                </Typography>
-              )}
-              {index !== partRecords.length - 1 && <Divider sx={{ my: 2 }} />}
-            </Box>
-          ))
-        ) : (
-          <Typography>No parts installed yet.</Typography>
-        )}
-      </Paper>
 
       {/* Modals */}
-      <EquipmentEditModal
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-        equipment={equipment}
-        onSaved={() => {
-          setEditOpen(false);
-          setLoading(true);
-          fetchEquipment();
-        }}
-      />
+      {editOpen && equipment && (
+        <EquipmentEditModal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          equipment={equipment}
+          onSaved={reloadAll}
+        />
+      )}
 
-      <ServiceRecordForm
-        open={serviceFormOpen}
-        onClose={() => setServiceFormOpen(false)}
-        equipmentId={equipment.id!}
-        onSaved={() => {
-          setServiceFormOpen(false);
-          fetchServiceHistory();
-        }}
-      />
+      {serviceOpen && (
+        <AddServiceModal
+          open={serviceOpen}
+          onClose={() => setServiceOpen(false)}
+          equipmentId={id!}
+          onSaved={reloadAll}
+        />
+      )}
 
-      <PartsRecordForm
-        open={partsFormOpen}
-        onClose={() => setPartsFormOpen(false)}
-        equipmentId={equipment.id!}
-        onSaved={() => {
-          setPartsFormOpen(false);
-          fetchPartsHistory();
-        }}
-      />
+      {partOpen && (
+        <AddPartModal
+          open={partOpen}
+          onClose={() => setPartOpen(false)}
+          equipmentId={id!}
+          onSaved={reloadAll}
+        />
+      )}
     </Box>
   );
 };

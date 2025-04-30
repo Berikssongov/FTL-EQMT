@@ -1,30 +1,51 @@
 // src/services/partsRecordsService.ts
-import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
+import { db } from "../firebase";
 
-// Type for part record
 export interface PartRecord {
+  id?: string;
   equipmentId: string;
-  dateInstalled: string; // ISO string
   partName: string;
+  partNumber?: string;
+  vendor?: string;
+  price?: number;
   notes?: string;
-  cost?: number;
+  dateInstalled?: string;
 }
 
-// Reference to the "partsRecords" collection
-const partsRecordsCollection = collection(db, 'partsRecords');
+const partsRecordsCollection = collection(db, "partsRecords");
 
-// Add a new part record
 export const addPartRecord = async (record: PartRecord) => {
   await addDoc(partsRecordsCollection, record);
 };
 
-// Fetch part records for specific equipment
-export const fetchPartRecordsByEquipmentId = async (equipmentId: string): Promise<PartRecord[]> => {
-  const q = query(partsRecordsCollection, where('equipmentId', '==', equipmentId));
+export const getPartRecordById = async (id: string): Promise<PartRecord | null> => {
+  const ref = doc(db, "partsRecords", id);
+  const snapshot = await getDoc(ref);
+  return snapshot.exists() ? { id, ...(snapshot.data() as PartRecord) } : null;
+};
+
+// Add this function to update parts:
+export const updatePartRecord = async (id: string, data: PartRecord) => {
+  const ref = doc(db, "partsRecords", id);
+  await updateDoc(ref, { ...data });
+};
+
+
+export const fetchPartRecordsByEquipmentId = async (
+  equipmentId: string
+): Promise<PartRecord[]> => {
+  const q = query(partsRecordsCollection, where("equipmentId", "==", equipmentId));
   const snapshot = await getDocs(q);
 
-  return snapshot.docs.map(doc => ({
-    ...(doc.data() as PartRecord),
-  }));
+  
+
+  return snapshot.docs.map(doc => {
+    const data = doc.data() as Omit<PartRecord, "id">;
+    return {
+      id: doc.id,
+      ...data,
+    };
+  });
+  
 };

@@ -1,45 +1,80 @@
+// ---------- Equipment ----------
 export interface Equipment {
   id?: string;
   name: string;
   category: string;
-  status: string;
-  location: string;
-  notes?: string;
   make: string;
-  serialNumber: string;
   modelNumber: string;
-  lastInspection?: string;
-  assignedTo?: string;
+  serialNumber: string;
+  location: string;
+  status: string;
   condition: string;
-
-  netWeight?: string;
-  grossWeight?: string;
-  description?: string;
-
+  notes?: string;
   legal?: {
     licensePlate?: string;
     insuranceInfo?: string;
   };
-
   engine?: {
     serialNumber?: string;
     modelNumber?: string;
   };
-
-  damageReports?: DamageReport[];
+  weightCapacity?: number;
+  towingCapacity?: number;
+  assignedTo?: string;
+  lastInspection?: string;
 }
 
-export interface DamageReport {
+// ---------- UI-Friendly Equipment Extensions ----------
+export interface EquipmentServiceRecord {
+  id: string;
+  equipmentId: string;
+  date: string;
+  summary: string;
+  totalCost: number;
+  items?: {
+    description: string;
+    cost: number;
+  }[];
+}
+
+export interface EquipmentPart {
+  id: string;
+  equipmentId: string;
+  name: string; // maps from partName
+  partNumber: string;
+  vendor: string;
+  price: number;
+}
+
+// ---------- Firestore Records ----------
+export interface ServiceRecord {
+  id?: string;
+  equipmentId: string;
+  date: string;
+  summary?: string;
+  totalCost?: number;
+  items?: {
+    description: string;
+    cost: number;
+  }[];
+  vendorName?: string;      // ✅ add this
+  vendorContact?: string;   // ✅ add this
+}
+
+
+export interface PartRecord {
+  id?: string;
+  equipmentId: string;
   partName: string;
   partNumber: string;
-  supplier1: string;
-  price1: string;
-  supplier2: string;
-  price2: string;
-  supplier3: string;
-  price3: string;
-  timestamp?: string;
+  price: number;
+  vendor?: string;
+  vendorName?: string;
+  vendorContact?: string;
+  dateInstalled?: string;
 }
+
+// ---------- Hand Tools ----------
 export interface HandTool {
   id?: string;
   name: string;
@@ -48,6 +83,7 @@ export interface HandTool {
   quantity: number;
 }
 
+// ---------- Power Tools ----------
 export interface PowerTool {
   id?: string;
   name: string;
@@ -56,8 +92,17 @@ export interface PowerTool {
   condition: string;
 }
 
+// ---------- Shared ----------
 export interface Location {
   id?: string;
   name: string;
 }
 
+// ---------- Optional: for future use ----------
+export interface DamageReport {
+  id?: string;
+  equipmentId: string;
+  description: string;
+  reportedBy: string;
+  dateReported: string;
+}
