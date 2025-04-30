@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from "react";
 import {
+  Box,
+  Typography,
   Paper,
   Table,
-  TableHead,
   TableBody,
-  TableRow,
   TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   IconButton,
-  Typography,
-  Box,
-  CircularProgress,
   Button,
+  CircularProgress,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
-import AddIcon from "@mui/icons-material/Add";
 
 import { fetchPowerTools } from "../services/powerToolsService";
 import { PowerTool } from "../types";
@@ -23,13 +25,10 @@ import AddPowerToolModal from "./AddPowerToolModal";
 const PowerToolsList: React.FC = () => {
   const [tools, setTools] = useState<PowerTool[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTool, setSelectedTool] = useState<PowerTool | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
-
-  useEffect(() => {
-    loadTools();
-  }, []);
+  const [editing, setEditing] = useState<PowerTool | null>(null);
+  const [openAdd, setOpenAdd] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const loadTools = async () => {
     setLoading(true);
@@ -38,36 +37,34 @@ const PowerToolsList: React.FC = () => {
     setLoading(false);
   };
 
-  const handleEdit = (tool: PowerTool) => {
-    setSelectedTool(tool);
-    setEditOpen(true);
-  };
+  useEffect(() => {
+    loadTools();
+  }, []);
 
   return (
-    <Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-        <Typography variant="h5">Power Tools Inventory</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setAddOpen(true)}
-        >
-          Add Tool
+    <Box sx={{ p: 2 }}>
+      <Typography variant={isMobile ? "h5" : "h4"} fontWeight={600} sx={{ mb: 2 }}>
+        Power Tools
+      </Typography>
+
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+        <Button variant="contained" onClick={() => setOpenAdd(true)}>
+          Add Power Tool
         </Button>
       </Box>
 
       {loading ? (
         <CircularProgress />
       ) : (
-        <Paper>
+        <TableContainer component={Paper} sx={{ overflowX: "auto" }}>
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Tool</TableCell>
+                <TableCell>Name</TableCell>
                 <TableCell>Location</TableCell>
-                <TableCell>Serial #</TableCell>
                 <TableCell>Condition</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell>Serial Number</TableCell>
+                <TableCell />
               </TableRow>
             </TableHead>
             <TableBody>
@@ -75,10 +72,10 @@ const PowerToolsList: React.FC = () => {
                 <TableRow key={tool.id}>
                   <TableCell>{tool.name}</TableCell>
                   <TableCell>{tool.location}</TableCell>
-                  <TableCell>{tool.serialNumber || "—"}</TableCell>
                   <TableCell>{tool.condition}</TableCell>
+                  <TableCell>{tool.serialNumber}</TableCell>
                   <TableCell align="right">
-                    <IconButton onClick={() => handleEdit(tool)}>
+                    <IconButton onClick={() => setEditing(tool)} size="small">
                       <EditIcon />
                     </IconButton>
                   </TableCell>
@@ -86,25 +83,28 @@ const PowerToolsList: React.FC = () => {
               ))}
             </TableBody>
           </Table>
-        </Paper>
+        </TableContainer>
       )}
 
-      {selectedTool && (
+      {editing && (
         <EditPowerToolModal
-          open={editOpen}
-          onClose={() => {
-            setEditOpen(false);
-            setSelectedTool(null);
+          open={!!editing}
+          onClose={() => setEditing(null)}
+          tool={editing}
+          onSaved={() => {
+            loadTools();
+            setEditing(null);
           }}
-          tool={selectedTool}
-          onSaved={loadTools}
         />
       )}
 
       <AddPowerToolModal
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        onSaved={loadTools}
+        open={openAdd}
+        onClose={() => setOpenAdd(false)}
+        onSaved={() => {
+          loadTools();
+          setOpenAdd(false);
+        }}
       />
     </Box>
   );

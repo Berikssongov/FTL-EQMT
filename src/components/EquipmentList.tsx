@@ -1,4 +1,3 @@
-// src/components/EquipmentList.tsx
 import React, { useEffect, useState } from "react";
 import {
   Table,
@@ -13,6 +12,8 @@ import {
   Box,
   Button,
   Stack,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 
 import { fetchEquipment } from "../services/equipmentServices";
@@ -25,6 +26,8 @@ const EquipmentList: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [openModal, setOpenModal] = useState(false);
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const loadEquipment = async () => {
     setLoading(true);
@@ -43,31 +46,27 @@ const EquipmentList: React.FC = () => {
   }, []);
 
   return (
-    <>
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{ mb: 2 }}
-      >
-        <Typography variant="h6">Equipment List</Typography>
+    <Box sx={{ p: 2 }}>
+      <Typography variant={isMobile ? "h5" : "h4"} fontWeight={600} sx={{ mb: 2 }}>
+        Equipment List
+      </Typography>
+
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
         <Button variant="contained" onClick={() => setOpenModal(true)}>
           Add Equipment
         </Button>
-      </Stack>
+      </Box>
 
       {loading ? (
         <CircularProgress />
       ) : equipmentList.length === 0 ? (
         <Typography>No equipment found.</Typography>
       ) : (
-        <TableContainer component={Paper}>
+        <TableContainer component={Paper} sx={{ overflowX: "auto" }}>
           <Table aria-label="equipment table">
             <TableHead>
               <TableRow>
-                <TableCell>
-                  <strong>Name</strong>
-                </TableCell>
+                <TableCell><strong>Name</strong></TableCell>
                 <TableCell>Category</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Location</TableCell>
@@ -96,16 +95,15 @@ const EquipmentList: React.FC = () => {
         </TableContainer>
       )}
 
-<AddEquipmentModal
-  open={openModal}
-  onClose={() => setOpenModal(false)}
-  onSaved={() => {
-    loadEquipment(); // refresh the list after adding
-    setOpenModal(false);
-  }}
-/>
-
-    </>
+      <AddEquipmentModal
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        onSaved={() => {
+          loadEquipment();
+          setOpenModal(false);
+        }}
+      />
+    </Box>
   );
 };
 

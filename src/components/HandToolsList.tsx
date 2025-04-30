@@ -1,19 +1,22 @@
 import React, { useEffect, useState } from "react";
 import {
-  Paper,
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-  IconButton,
-  Typography,
   Box,
-  CircularProgress,
+  Paper,
+  Typography,
+  IconButton,
+  Grid,
   Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  CircularProgress,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
-import AddIcon from "@mui/icons-material/Add";
 
 import { fetchHandTools } from "../services/handToolsService";
 import { HandTool } from "../types";
@@ -23,13 +26,10 @@ import AddHandToolModal from "./AddHandToolModal";
 const HandToolsList: React.FC = () => {
   const [tools, setTools] = useState<HandTool[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTool, setSelectedTool] = useState<HandTool | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
-
-  useEffect(() => {
-    loadTools();
-  }, []);
+  const [editing, setEditing] = useState<HandTool | null>(null);
+  const [openAdd, setOpenAdd] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const loadTools = async () => {
     setLoading(true);
@@ -38,36 +38,34 @@ const HandToolsList: React.FC = () => {
     setLoading(false);
   };
 
-  const handleEdit = (tool: HandTool) => {
-    setSelectedTool(tool);
-    setEditOpen(true);
-  };
+  useEffect(() => {
+    loadTools();
+  }, []);
 
   return (
-    <Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-        <Typography variant="h5">Hand Tools Inventory</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setAddOpen(true)}
-        >
-          Add Tool
+    <Box sx={{ p: 2 }}>
+      <Typography variant={isMobile ? "h5" : "h4"} fontWeight={600} sx={{ mb: 2 }}>
+        Hand Tools
+      </Typography>
+
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+        <Button variant="contained" onClick={() => setOpenAdd(true)}>
+          Add Hand Tool
         </Button>
       </Box>
 
       {loading ? (
         <CircularProgress />
       ) : (
-        <Paper>
+        <TableContainer component={Paper} sx={{ overflowX: "auto" }}>
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Tool</TableCell>
+                <TableCell>Name</TableCell>
                 <TableCell>Location</TableCell>
                 <TableCell>Condition</TableCell>
                 <TableCell>Quantity</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell />
               </TableRow>
             </TableHead>
             <TableBody>
@@ -78,7 +76,7 @@ const HandToolsList: React.FC = () => {
                   <TableCell>{tool.condition}</TableCell>
                   <TableCell>{tool.quantity}</TableCell>
                   <TableCell align="right">
-                    <IconButton onClick={() => handleEdit(tool)}>
+                    <IconButton onClick={() => setEditing(tool)} size="small">
                       <EditIcon />
                     </IconButton>
                   </TableCell>
@@ -86,25 +84,28 @@ const HandToolsList: React.FC = () => {
               ))}
             </TableBody>
           </Table>
-        </Paper>
+        </TableContainer>
       )}
 
-      {selectedTool && (
+      {editing && (
         <EditHandToolModal
-          open={editOpen}
-          onClose={() => {
-            setEditOpen(false);
-            setSelectedTool(null);
+          open={!!editing}
+          onClose={() => setEditing(null)}
+          tool={editing}
+          onSaved={() => {
+            loadTools();
+            setEditing(null);
           }}
-          tool={selectedTool}
-          onSaved={loadTools}
         />
       )}
 
       <AddHandToolModal
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        onSaved={loadTools}
+        open={openAdd}
+        onClose={() => setOpenAdd(false)}
+        onSaved={() => {
+          loadTools();
+          setOpenAdd(false);
+        }}
       />
     </Box>
   );

@@ -6,6 +6,8 @@ import {
   CircularProgress,
   Paper,
   Divider,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 
 import InventoryIcon from "@mui/icons-material/Warehouse";
@@ -27,6 +29,9 @@ const DashboardHome: React.FC = () => {
   const [powerToolsCount, setPowerToolsCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   useEffect(() => {
     loadDashboardData();
   }, []);
@@ -43,8 +48,8 @@ const DashboardHome: React.FC = () => {
     setEquipmentCount(equipment.length);
     setBrokenCount(
       equipment.filter((e) => e.condition === "Broken").length +
-      handTools.filter((t) => t.condition === "Broken").length +
-      powerTools.filter((t) => t.condition === "Broken").length
+        handTools.filter((t) => t.condition === "Broken").length +
+        powerTools.filter((t) => t.condition === "Broken").length
     );
     setHandToolsCount(handTools.length);
     setPowerToolsCount(powerTools.length);
@@ -53,8 +58,12 @@ const DashboardHome: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" fontWeight={600} sx={{ mb: 4 }}>
+    <Box sx={{ px: 2, py: 3 }}>
+      <Typography
+        variant={isMobile ? "h5" : "h4"}
+        fontWeight={600}
+        sx={{ mb: 4 }}
+      >
         Dashboard
       </Typography>
 
@@ -62,8 +71,8 @@ const DashboardHome: React.FC = () => {
         <CircularProgress />
       ) : (
         <>
-          {/* 🧮 Summary Cards */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
+          {/* Summary Cards */}
+          <Grid container spacing={3} sx={{ mb: 4 }} {...({} as any)}>
             <Grid item xs={12} sm={6} md={3} {...({} as any)}>
               <DashboardStatsCard
                 title="Total Equipment"
@@ -95,9 +104,21 @@ const DashboardHome: React.FC = () => {
             </Grid>
           </Grid>
 
-          {/* ⚠️ Broken Items List */}
-          <Paper elevation={3} sx={{ p: 3 }}>
-            <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+          {/* Broken Items */}
+          <Paper
+            elevation={3}
+            sx={{
+              p: 3,
+              overflowX: "auto",
+              width: "100%",
+              maxWidth: "100%",
+            }}
+          >
+            <Typography
+              variant="h6"
+              fontWeight={600}
+              sx={{ mb: 2, whiteSpace: "nowrap" }}
+            >
               Recently Marked as Broken
             </Typography>
             <BrokenItemsReport />
