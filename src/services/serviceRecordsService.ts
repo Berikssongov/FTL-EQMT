@@ -1,17 +1,18 @@
 // src/services/serviceRecordsService.ts
 import { collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import { LineItem } from "../types";
 
 export interface ServiceRecord {
-  items: never[];
-  id?: string;
-  equipmentId: string;
-  date: string; // ISO String
-  summary?: string;
-  serviceType?: string;
-  notes?: string;
-  totalCost?: number;
-}
+    items: LineItem[];
+    id?: string;
+    equipmentId: string;
+    date: string; // ISO String
+    summary?: string;
+    serviceType?: string;
+    notes?: string;
+    totalCost?: number;
+  }
 
 const serviceRecordsCollection = collection(db, "serviceRecords");
 

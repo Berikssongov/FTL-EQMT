@@ -9,24 +9,35 @@ import {
   Button,
   Divider,
   Container,
+  IconButton,
 } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
 import { getPartRecordById } from "../services/partsRecordsService";
 import { PartRecord } from "../types";
+import EditPartModal from "./EditPartModal";
 
 const PartDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [part, setPart] = useState<PartRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
       getPartRecordById(id).then((record) => {
-        setPart(record as PartRecord);
+        setPart(record);
         setLoading(false);
       });
     }
   }, [id]);
+
+  const reload = async () => {
+    if (id) {
+      const record = await getPartRecordById(id);
+      setPart(record);
+    }
+  };
 
   if (loading) return <CircularProgress />;
   if (!part) return <Typography>Part record not found.</Typography>;
@@ -38,24 +49,43 @@ const PartDetail: React.FC = () => {
       </Button>
 
       <Paper elevation={2} sx={{ p: 3 }}>
-        <Typography variant="h5" fontWeight={600} gutterBottom>
-          Part Details
-        </Typography>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Typography variant="h5" fontWeight={600}>
+            Part Details
+          </Typography>
+          <IconButton onClick={() => setEditOpen(true)}>
+            <EditIcon />
+          </IconButton>
+        </Box>
+
         <Typography><strong>Name:</strong> {part.partName}</Typography>
         <Typography><strong>Part #:</strong> {part.partNumber}</Typography>
         <Typography><strong>Vendor:</strong> {part.vendor}</Typography>
+        {part.vendorName && (
+          <Typography><strong>Vendor Name:</strong> {part.vendorName}</Typography>
+        )}
+        {part.vendorContact && (
+          <Typography><strong>Contact:</strong> {part.vendorContact}</Typography>
+        )}
         <Typography>
-  <strong>Date Installed:</strong>{" "}
-  {part.dateInstalled ? new Date(part.dateInstalled).toLocaleDateString() : "N/A"}
-</Typography>
-
-
+          <strong>Date Installed:</strong>{" "}
+          {part.dateInstalled ? new Date(part.dateInstalled).toLocaleDateString() : "N/A"}
+        </Typography>
 
         <Divider sx={{ my: 2 }} />
-        <Typography variant="body1" fontWeight={600}>
-          Cost: ${part.price?.toFixed(2)}
+        <Typography fontWeight={600}>
+          Price: ${part.price?.toFixed(2) || "0.00"}
         </Typography>
       </Paper>
+
+      {editOpen && part && (
+        <EditPartModal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          part={part}
+          onSaved={reload}
+        />
+      )}
     </Container>
   );
 };

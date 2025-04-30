@@ -9,24 +9,35 @@ import {
   Button,
   Divider,
   Container,
+  IconButton,
 } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
 import { getServiceRecordById } from "../services/serviceRecordsService";
 import { ServiceRecord } from "../types";
+import EditServiceModal from "./EditServiceModal";
 
 const ServiceDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [service, setService] = useState<ServiceRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
-      getServiceRecordById(id).then((record) => {
-        setService(record);
+      getServiceRecordById(id).then((data) => {
+        setService(data);
         setLoading(false);
       });
     }
   }, [id]);
+
+  const reload = async () => {
+    if (id) {
+      const data = await getServiceRecordById(id);
+      setService(data);
+    }
+  };
 
   if (loading) return <CircularProgress />;
   if (!service) return <Typography>Service record not found.</Typography>;
@@ -38,9 +49,15 @@ const ServiceDetail: React.FC = () => {
       </Button>
 
       <Paper elevation={2} sx={{ p: 3 }}>
-        <Typography variant="h5" fontWeight={600} gutterBottom>
-          Service Details
-        </Typography>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Typography variant="h5" fontWeight={600}>
+            Service Details
+          </Typography>
+          <IconButton onClick={() => setEditOpen(true)}>
+            <EditIcon />
+          </IconButton>
+        </Box>
+
         <Typography><strong>Summary:</strong> {service.summary}</Typography>
         <Typography><strong>Date:</strong> {new Date(service.date).toLocaleDateString()}</Typography>
 
@@ -52,25 +69,31 @@ const ServiceDetail: React.FC = () => {
         )}
 
         <Divider sx={{ my: 2 }} />
-
-        <Typography variant="h6" fontWeight={600}>Line Items</Typography>
-        {service.items && service.items.length > 0 ? (
-          <Box sx={{ mt: 1 }}>
-            {service.items.map((item, idx) => (
-              <Box key={idx} sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-                <Typography>{item.description}</Typography>
-                <Typography>${item.cost.toFixed(2)}</Typography>
-              </Box>
-            ))}
-            <Divider sx={{ my: 2 }} />
-            <Typography fontWeight={600}>
-              Total: ${service.totalCost?.toFixed(2)}
-            </Typography>
+        <Typography variant="subtitle1" fontWeight={600}>Line Items</Typography>
+        {service.items?.map((item, index) => (
+          <Box
+            key={index}
+            sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}
+          >
+            <Typography>{item.description}</Typography>
+            <Typography>${item.cost.toFixed(2)}</Typography>
           </Box>
-        ) : (
-          <Typography>No items listed.</Typography>
-        )}
+        ))}
+
+        <Divider sx={{ my: 2 }} />
+        <Typography fontWeight={600}>
+          Total Cost: ${service.totalCost?.toFixed(2) || "0.00"}
+        </Typography>
       </Paper>
+
+      {editOpen && service && (
+        <EditServiceModal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          service={service}
+          onSaved={reload}
+        />
+      )}
     </Container>
   );
 };

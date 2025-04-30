@@ -53,12 +53,9 @@ export interface ServiceRecord {
   date: string;
   summary?: string;
   totalCost?: number;
-  items?: {
-    description: string;
-    cost: number;
-  }[];
-  vendorName?: string;      // ✅ add this
-  vendorContact?: string;   // ✅ add this
+  items: LineItem[];
+  vendorName?: string;
+  vendorContact?: string;
 }
 
 
@@ -106,3 +103,9 @@ export interface DamageReport {
   reportedBy: string;
   dateReported: string;
 }
+
+export interface LineItem {
+  description: string;
+  cost: number;
+}
+

@@ -2,16 +2,8 @@
 import { collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 
-export interface PartRecord {
-  id?: string;
-  equipmentId: string;
-  partName: string;
-  partNumber?: string;
-  vendor?: string;
-  price?: number;
-  notes?: string;
-  dateInstalled?: string;
-}
+import { PartRecord } from "../types";
+
 
 const partsRecordsCollection = collection(db, "partsRecords");
 
