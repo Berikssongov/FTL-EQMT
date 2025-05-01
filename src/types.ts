@@ -109,3 +109,22 @@ export interface LineItem {
   cost: number;
 }
 
+export interface KeyRecord {
+  id: string;
+  name: string;
+  info?: string;
+  isRestricted: boolean;
+  currentAssignment?: {
+    type: "person" | "lockbox";
+    name: string;
+  };
+}
+
+export interface KeyLog {
+  id?: string;
+  keyName: string;
+  action: "Signing In" | "Signing Out";
+  person: string;
+  lockbox: string;
+  timestamp: string;
+}

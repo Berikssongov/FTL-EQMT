@@ -31,6 +31,12 @@ import ManageLocationsPage from "./components/ManageLocationsPage";
 import ServiceDetail from "./components/ServiceDetail";
 import PartDetail from "./components/PartDetail";
 
+import KeyManagementPage from "./components/Keys/KeyManagementPage";
+import KeyIcon from "@mui/icons-material/VpnKey";
+import { Link } from "react-router-dom";
+
+
+
 // ---------- Header ----------
 const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -105,7 +111,8 @@ const Header: React.FC = () => {
           <Tab label="Dashboard" value="/" />
           <Tab label="Equipment List" value="/equipment" />
           <Tab label="Hand Tools" value="/hand-tools" />
-          <Tab label="Power Tools" value="/power-tools" />
+          <Tab label="Power Too" value="/power-tools" />
+          <Tab label="Keys" component={Link} to="/keys" />
         </Tabs>
       </Box>
     </AppBar>
@@ -144,6 +151,8 @@ const App: React.FC = () => {
             <Container maxWidth="lg">
               <PowerToolsList />
             </Container>
+          } />
+          <Route path="/keys" element={<KeyManagementPage />
           } />
           <Route path="/locations" element={
             <Container maxWidth="lg">
