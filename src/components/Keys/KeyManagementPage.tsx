@@ -1,30 +1,77 @@
 // src/components/Keys/KeyManagementPage.tsx
+import React, { useEffect, useState } from "react";
+import {
+  Container,
+  Typography,
+  Divider,
+} from "@mui/material";
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+} from "firebase/firestore";
 
-import React from "react";
-import { Box, Container, Typography, Divider } from "@mui/material";
+import { db } from "../../firebase";
 import KeyFormPanel from "./KeyFormPanel";
 import KeySearchPanel from "./KeySearchPanel";
 import KeyLogTable from "./KeyLogTable";
-import KeyHistoryTable from "./KeyHistoryTable";
+
+interface KeyLogEntry {
+  id: string;
+  keyName: string;
+  action: string;
+  person: string;
+  lockbox: string;
+  date: string;
+}
 
 const KeyManagementPage: React.FC = () => {
+  const [logs, setLogs] = useState<KeyLogEntry[]>([]);
+
+  useEffect(() => {
+    const fetchLogs = async () => {
+      const ref = collection(db, "keyLogs");
+      const snapshot = await getDocs(query(ref, orderBy("timestamp", "desc")));
+
+      const formatted = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          keyName: data.keyName,
+          action: data.action === "Signing Out" ? "Signed Out" : "Signed In",
+          person: data.person,
+          lockbox: data.lockbox,
+          date: new Date(data.timestamp).toLocaleString(),
+        };
+      });
+
+      setLogs(formatted);
+    };
+
+    fetchLogs();
+  }, []);
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" fontWeight={600} gutterBottom>
         Key Management
       </Typography>
 
-      {/* 📋 Key Sign-In/Out Form */}
       <KeyFormPanel />
 
       <Divider sx={{ my: 4 }} />
 
-      {/* 🔍 Search Section */}
       <KeySearchPanel />
 
-      {/* 🧾 Logs and Activity */}
-      <KeyHistoryTable />
-      <KeyLogTable />
+      {/* Recent Activity (5 most recent) */}
+      <KeyLogTable rows={logs.slice(0, 5)} />
+
+      {/* Full Log Below */}
+      <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mt: 5 }}>
+        Full Key History
+      </Typography>
+      <KeyLogTable rows={logs} />
     </Container>
   );
 };

@@ -1,66 +1,44 @@
 // src/components/Keys/KeyLogTable.tsx
 
 import React from "react";
-import {
-  Box,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Paper,
-} from "@mui/material";
+import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import { Paper, Typography } from "@mui/material";
 
-const mockLogData = [
-  {
-    date: "2024-04-01",
-    key: "B4",
-    action: "Signed Out",
-    person: "Alice",
-    location: "Maintenance Box",
-  },
-  {
-    date: "2024-04-03",
-    key: "B4",
-    action: "Signed In",
-    person: "Alice",
-    location: "Visitor Centre Box",
-  },
+export interface KeyLogEntry {
+  id: string;
+  date: string;
+  action: string;
+  keyName: string;
+  person: string;
+  lockbox: string;
+}
+
+interface Props {
+  rows: KeyLogEntry[];
+}
+
+const columns: GridColDef[] = [
+  { field: "date", headerName: "Date", flex: 1 },
+  { field: "action", headerName: "Action", flex: 1 },
+  { field: "keyName", headerName: "Key", flex: 1 },
+  { field: "person", headerName: "Person", flex: 1 },
+  { field: "lockbox", headerName: "Location", flex: 1 },
 ];
 
-const KeyLogTable: React.FC = () => {
-  return (
-    <Paper sx={{ mt: 4 }}>
-      <Box sx={{ p: 2 }}>
-        <Typography variant="h6" fontWeight={600}>
-          Key History Log
-        </Typography>
-      </Box>
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>Date</TableCell>
-            <TableCell>Key</TableCell>
-            <TableCell>Action</TableCell>
-            <TableCell>Person</TableCell>
-            <TableCell>Location</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {mockLogData.map((entry, idx) => (
-            <TableRow key={idx}>
-              <TableCell>{entry.date}</TableCell>
-              <TableCell>{entry.key}</TableCell>
-              <TableCell>{entry.action}</TableCell>
-              <TableCell>{entry.person}</TableCell>
-              <TableCell>{entry.location}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Paper>
-  );
-};
+const KeyLogTable: React.FC<Props> = ({ rows }) => (
+  <Paper sx={{ p: 2, mt: 4 }}>
+    <Typography variant="h6" fontWeight={600} gutterBottom>
+      📘 Recent Key Activity
+    </Typography>
+    <div style={{ height: 400, width: "100%" }}>
+      <DataGrid
+        rows={rows}
+        columns={columns}
+        getRowId={(row) => row.id}
+        pageSizeOptions={[10, 25, 50]}
+      />
+    </div>
+  </Paper>
+);
 
 export default KeyLogTable;
