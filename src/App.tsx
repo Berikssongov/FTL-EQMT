@@ -1,4 +1,5 @@
 // src/App.tsx
+import { Analytics } from "@vercel/analytics/react"
 import React, { useState, useEffect } from "react";
 import {
   CssBaseline,

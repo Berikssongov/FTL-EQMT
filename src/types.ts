@@ -128,3 +128,26 @@ export interface KeyLog {
   lockbox: string;
   timestamp: string;
 }
+
+// Represents a key that is assigned to a person
+export interface AssignedKey {
+  keyName: string;
+  person: string;
+}
+
+// Represents a key that is currently in a lockbox
+export interface LockboxKey {
+  keyName: string;
+  lockbox: string;
+  quantity: number;
+}
+
+// Represents a history log entry for key movement
+export interface KeyLogEntry {
+  keyName: string;
+  person: string;
+  lockbox: string;
+  action: "Signing Out" | "Signing In";
+  timestamp: string; // ISO 8601 format
+}
+

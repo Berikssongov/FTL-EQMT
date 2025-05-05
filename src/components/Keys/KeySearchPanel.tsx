@@ -1,167 +1,158 @@
-// src/components/Keys/KeySearchPanel.tsx
 import React, { useState } from "react";
 import {
-  Box,
+  TextField,
   Button,
+  Typography,
+  CircularProgress,
   Divider,
+  Box,
+  Paper,
   List,
   ListItem,
   ListItemText,
-  Paper,
-  TextField,
-  Typography,
 } from "@mui/material";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../../firebase";
+import { AssignedKey, LockboxKey, KeyLogEntry } from "../../types";
 
 const KeySearchPanel: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [results, setResults] = useState<any[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
-  const [mode, setMode] = useState<"key" | "person" | null>(null);
-  const [noMatch, setNoMatch] = useState(false);
+  const [queryText, setQueryText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [assignedMatches, setAssignedMatches] = useState<AssignedKey[]>([]);
+  const [lockboxMatches, setLockboxMatches] = useState<LockboxKey[]>([]);
+  const [history, setHistory] = useState<KeyLogEntry[]>([]);
+  const [noResults, setNoResults] = useState(false);
 
   const handleSearch = async () => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return;
+    setLoading(true);
+    setAssignedMatches([]);
+    setLockboxMatches([]);
+    setHistory([]);
+    setNoResults(false);
 
-    const isKeySearch = /^[A-F]?\d{1,2}$/.test(term); // B1, A12, 2, etc.
-    setMode(isKeySearch ? "key" : "person");
+    const queryLower = queryText.trim().toLowerCase();
+
+    if (!queryLower) {
+      setLoading(false);
+      setNoResults(true);
+      return;
+    }
 
     try {
-      const snapshot = await getDocs(collection(db, "keyData"));
-      const matchedResults: any[] = [];
-      const matchedHistory: any[] = [];
+      const assignedSnap = await getDocs(collection(db, "assignedKeys"));
+      const lockboxSnap = await getDocs(collection(db, "lockboxKeys"));
+      const logsSnap = await getDocs(collection(db, "keyLogs"));
 
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        const keyName = data?.keyName?.toLowerCase?.() ?? "";
-        const holders = Array.isArray(data?.holders) ? data.holders : [];
-        const historyEntries = Array.isArray(data?.history) ? data.history : [];
+      const allAssigned = assignedSnap.docs.map(doc => doc.data() as AssignedKey);
+      const allLockbox = lockboxSnap.docs.map(doc => doc.data() as LockboxKey);
+      const allLogs = logsSnap.docs.map(doc => doc.data() as KeyLogEntry);
 
-        // Key mode: match on key name
-        if (isKeySearch && keyName === term) {
-          matchedResults.push({
-            keyName: data.keyName,
-            holders,
-          });
-          matchedHistory.push(...historyEntries);
-        }
-
-        // Person mode: scan holders + history
-        if (!isKeySearch) {
-          const hasPersonInHolders = holders.some(
-            (h: any) => h?.name?.toLowerCase?.() === term
-          );
-          const matchingHistory = historyEntries.filter(
-            (h: any) => h?.name?.toLowerCase?.() === term
-          );
-
-          if (hasPersonInHolders) {
-            matchedResults.push({
-              keyName: data.keyName,
-              holders: holders.filter(
-                (h: any) => h?.name?.toLowerCase?.() === term
-              ),
-            });
-          }
-
-          if (matchingHistory.length > 0) {
-            matchedHistory.push(...matchingHistory);
-          }
-        }
-      });
-
-      setResults(matchedResults);
-      setHistory(
-        matchedHistory.sort(
-          (a, b) =>
-            (b?.timestamp?.toMillis?.() ?? 0) -
-            (a?.timestamp?.toMillis?.() ?? 0)
-        )
+      const matchesAssigned = allAssigned.filter(
+        (a) =>
+          a.person.toLowerCase().includes(queryLower) ||
+          a.keyName.toLowerCase() === queryLower
       );
-      setNoMatch(matchedResults.length === 0 && matchedHistory.length === 0);
-    } catch (err) {
-      console.error("Error during search:", err);
-      setNoMatch(true);
+
+      const matchesLockbox = allLockbox.filter(
+        (l) =>
+          l.lockbox.toLowerCase().includes(queryLower) ||
+          l.keyName.toLowerCase() === queryLower
+      );
+
+      const matchingLogs = allLogs.filter(
+        (log) =>
+          log.keyName.toLowerCase() === queryLower ||
+          log.person.toLowerCase().includes(queryLower)
+      );
+
+      setAssignedMatches(matchesAssigned);
+      setLockboxMatches(matchesLockbox);
+      setHistory(matchingLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+
+      if (
+        matchesAssigned.length === 0 &&
+        matchesLockbox.length === 0 &&
+        matchingLogs.length === 0
+      ) {
+        setNoResults(true);
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+      setNoResults(true);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Box sx={{ mb: 4 }}>
-      <Typography variant="h6" gutterBottom>
-        🔍 Search Keys or People
+    <Box>
+      <Typography variant="h5" gutterBottom>
+        Search Keys or People
       </Typography>
-
       <Box display="flex" gap={2} mb={2}>
         <TextField
-          label="Search key or name"
+          label="Enter a key or name"
+          value={queryText}
+          onChange={(e) => setQueryText(e.target.value)}
           fullWidth
-          value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
-            if (noMatch) setNoMatch(false);
-          }}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
         />
         <Button variant="contained" onClick={handleSearch}>
           Search
         </Button>
       </Box>
 
-      {noMatch && (
-        <Typography color="text.secondary" sx={{ mt: 2 }}>
-          No matches found for "{searchTerm}".
-        </Typography>
-      )}
+      {loading && <CircularProgress />}
 
-      {results.length > 0 && (
-        <Box>
-          <Typography variant="subtitle1" sx={{ mb: 1 }}>
-            {mode === "key" ? "Current Holders:" : "Assigned Keys:"}
-          </Typography>
+      {noResults && <Typography>No matches found for "{queryText}"</Typography>}
+
+      {assignedMatches.length > 0 && (
+        <Paper sx={{ mb: 3, p: 2 }}>
+          <Typography variant="h6">Keys Assigned to People</Typography>
           <List>
-            {results.map((res, i) => (
+            {assignedMatches.map((a, i) => (
               <ListItem key={i}>
                 <ListItemText
-                  primary={`Key: ${res.keyName}`}
-                  secondary={
-                    res.holders.length > 0
-                      ? res.holders
-                          .map((h: any) => `${h.name} @ ${h.location}`)
-                          .join(", ")
-                      : "No current holders"
-                  }
+                  primary={`Key: ${a.keyName}`}
+                  secondary={`Person: ${a.person}`}
                 />
               </ListItem>
             ))}
           </List>
-          <Divider sx={{ my: 2 }} />
-        </Box>
+        </Paper>
+      )}
+
+      {lockboxMatches.length > 0 && (
+        <Paper sx={{ mb: 3, p: 2 }}>
+          <Typography variant="h6">Keys in Lockboxes</Typography>
+          <List>
+            {lockboxMatches.map((l, i) => (
+              <ListItem key={i}>
+                <ListItemText
+                  primary={`Key: ${l.keyName}`}
+                  secondary={`Lockbox: ${l.lockbox} — Quantity: ${l.quantity}`}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
       )}
 
       {history.length > 0 && (
-        <Box>
-          <Typography variant="subtitle1" sx={{ mb: 1 }}>
-            Activity History:
-          </Typography>
-          <Paper variant="outlined">
-            <List dense>
-              {history.map((entry, i) => (
-                <ListItem key={i} divider>
-                  <ListItemText
-                    primary={`${entry.action} — ${entry.keyName} — ${entry.name}`}
-                    secondary={
-                      entry.timestamp?.toDate
-                        ? entry.timestamp.toDate().toLocaleString()
-                        : "Unknown time"
-                    }
-                  />
-                </ListItem>
-              ))}
-            </List>
-          </Paper>
-        </Box>
+        <Paper sx={{ mb: 3, p: 2 }}>
+          <Typography variant="h6">History</Typography>
+          <List>
+            {history.map((entry, i) => (
+              <ListItem key={i}>
+                <ListItemText
+                  primary={`${entry.action}: ${entry.keyName}`}
+                  secondary={`From: ${entry.lockbox} — To: ${entry.person} @ ${new Date(
+                    entry.timestamp
+                  ).toLocaleString()}`}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
       )}
     </Box>
   );
