@@ -1,27 +1,19 @@
 // src/App.tsx
-import { Analytics } from "@vercel/analytics/react"
+import { Analytics } from "@vercel/analytics/react";
 import React, { useState, useEffect } from "react";
 import {
   CssBaseline,
-  AppBar,
-  Toolbar,
-  Typography,
   Box,
   Container,
-  Tabs,
-  Tab,
-  IconButton,
-  Menu,
-  MenuItem,
+  Typography,
 } from "@mui/material";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
-  useNavigate,
-  useLocation,
 } from "react-router-dom";
-import { Settings as SettingsIcon } from "@mui/icons-material";
+
+import AppHeader from "./components/Layout/AppHeader";
 
 import EquipmentList from "./components/EquipmentList";
 import EquipmentDetails from "./components/EquipmentDetails";
@@ -43,104 +35,10 @@ import { db } from "./firebase";
 import MigratePage from "./pages/MigratePage";
 import MigrateHoldersPage from "./pages/MigrateHoldersPage";
 
+import AssetList from "./components/MMS/Assets/AssetList";
+import AssetDetail from "./components/MMS/Assets/AssetDetail";
+import ComponentList from "./components/MMS/Components/ComponentList";
 
-
-// ---------- Header ----------
-const Header: React.FC = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
-  const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
-    navigate(newValue);
-  };
-
-  const currentTab =
-    location.pathname.startsWith("/equipment") ? "/equipment"
-    : location.pathname.startsWith("/hand-tools") ? "/hand-tools"
-    : location.pathname.startsWith("/power-tools") ? "/power-tools"
-    : location.pathname.startsWith("/keys") ? "/keys"
-    : "/";
-
-  const handleSettingsClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleSettingsClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleNavigateToLocations = () => {
-    navigate("/locations");
-    handleSettingsClose();
-  };
-
-  const handleNavigateToKeysAssigned = () => {
-    navigate("/keys-assigned");
-    handleSettingsClose();
-  };
-
-  const handleNavigateToLockboxKeys = () => {
-    navigate("/keys-lockbox");
-    handleSettingsClose();
-  };
-
-  return (
-    <AppBar
-      position="static"
-      elevation={1}
-      sx={{
-        backgroundColor: "rgb(43, 70, 53)",
-        color: "rgb(206, 199, 188)",
-      }}
-    >
-      <Toolbar sx={{ justifyContent: "space-between" }}>
-        <Typography variant="body1" sx={{ color: "rgb(206, 199, 188)" }}>
-          Manage your equipment efficiently
-        </Typography>
-        <Typography variant="h6" sx={{ fontWeight: 600, color: "rgb(206, 199, 188)" }}>
-          FTL Equipment Manager
-        </Typography>
-
-        <Box>
-          <IconButton onClick={handleSettingsClick} sx={{ color: "rgb(206, 199, 188)" }}>
-            <SettingsIcon />
-          </IconButton>
-          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleSettingsClose}>
-            <MenuItem onClick={handleNavigateToLocations}>Manage Locations</MenuItem>
-            <MenuItem onClick={handleNavigateToKeysAssigned}>Keys Assigned</MenuItem>
-            <MenuItem onClick={handleNavigateToLockboxKeys}>Lockbox Keys</MenuItem>
-          </Menu>
-        </Box>
-      </Toolbar>
-
-      <Box sx={{ display: "flex", justifyContent: "center" }}>
-        <Tabs
-          value={currentTab}
-          onChange={handleTabChange}
-          variant="scrollable"
-          scrollButtons="auto"
-          allowScrollButtonsMobile
-          indicatorColor="secondary"
-          textColor="inherit"
-          sx={{
-            "& .MuiTab-root": { color: "rgb(206, 199, 188)" },
-            "& .Mui-selected": { fontWeight: 600 },
-            maxWidth: "100vw",
-          }}
-        >
-          <Tab label="Dashboard" value="/" />
-          <Tab label="Equipment List" value="/equipment" />
-          <Tab label="Hand Tools" value="/hand-tools" />
-          <Tab label="Power Tools" value="/power-tools" />
-          <Tab label="Keys" value="/keys" />
-        </Tabs>
-      </Box>
-    </AppBar>
-  );
-};
-
-// ---------- App ----------
 const App: React.FC = () => {
   interface AssignedKey {
     id: string;
@@ -183,8 +81,7 @@ const App: React.FC = () => {
   return (
     <Router>
       <CssBaseline />
-      <Header />
-
+      <AppHeader />
       <Box component="main" sx={{ py: 4 }}>
         <Routes>
           <Route path="/" element={<DashboardHome />} />
@@ -232,18 +129,38 @@ const App: React.FC = () => {
               <AssignedKeysTable />
             </Container>
           } />
-
           <Route path="/migrate" element={<MigratePage />} />
           <Route path="/migrate-holders" element={<MigrateHoldersPage />} />
-
-
           <Route path="/service/:id" element={<ServiceDetail />} />
           <Route path="/parts/:id" element={<PartDetail />} />
+
+          {/* MMS Routes */}
+          <Route path="/mms/assets" element={
+            <Container maxWidth="lg">
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 500 }}>
+                Asset List
+              </Typography>
+              <AssetList />
+            </Container>
+          } />
+          <Route path="/mms/assets/:id" element={
+            <Container maxWidth="lg">
+              <AssetDetail />
+            </Container>
+          } />
+          <Route path="/mms/components" element={
+            <Container maxWidth="lg">
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 500 }}>
+                Component List
+              </Typography>
+              <ComponentList />
+            </Container>
+          } />
         </Routes>
       </Box>
+      <Analytics />
     </Router>
   );
 };
 
 export default App;
-<Analytics />

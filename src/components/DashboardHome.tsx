@@ -1,130 +1,164 @@
 import React, { useEffect, useState } from "react";
 import {
   Box,
-  Grid,
+  Card,
+  CardContent,
   Typography,
-  CircularProgress,
-  Paper,
+  Grid,
   Divider,
-  useMediaQuery,
-  useTheme,
+  List,
+  ListItem,
+  ListItemText,
 } from "@mui/material";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../firebase";
 
-import InventoryIcon from "@mui/icons-material/Warehouse";
-import WarningIcon from "@mui/icons-material/ReportProblem";
-import BuildIcon from "@mui/icons-material/Build";
-import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturing";
+interface Equipment {
+  id: string;
+  name: string;
+  condition: string;
+  createdAt?: any;
+}
 
-import DashboardStatsCard from "./DashboardStatsCard";
-import BrokenItemsReport from "./BrokenItemsReport";
-
-import { fetchEquipment } from "../services/equipmentServices";
-import { fetchHandTools } from "../services/handToolsService";
-import { fetchPowerTools } from "../services/powerToolsService";
+const StatCard = ({ title, value }: { title: string; value: number | string }) => (
+  <Card elevation={3} sx={{ minWidth: 180 }}>
+    <CardContent>
+      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+        {title}
+      </Typography>
+      <Typography variant="h5" fontWeight="bold">
+        {value}
+      </Typography>
+    </CardContent>
+  </Card>
+);
 
 const DashboardHome: React.FC = () => {
-  const [equipmentCount, setEquipmentCount] = useState<number>(0);
-  const [brokenCount, setBrokenCount] = useState<number>(0);
-  const [handToolsCount, setHandToolsCount] = useState<number>(0);
-  const [powerToolsCount, setPowerToolsCount] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
-
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [assignedKeysCount, setAssignedKeysCount] = useState<number>(0);
+  const [lockboxKeysCount, setLockboxKeysCount] = useState<number>(0);
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [handToolCount, setHandToolCount] = useState<number>(0);
+  const [powerToolCount, setPowerToolCount] = useState<number>(0);
 
   useEffect(() => {
-    loadDashboardData();
+    const fetchData = async () => {
+      const assignedSnap = await getDocs(collection(db, "assignedKeys"));
+      const lockboxSnap = await getDocs(collection(db, "lockboxKeys"));
+      const equipmentSnap = await getDocs(collection(db, "equipment"));
+      const handToolsSnap = await getDocs(collection(db, "handTools"));
+      const powerToolsSnap = await getDocs(collection(db, "powerTools"));
+
+      setAssignedKeysCount(assignedSnap.size);
+      setLockboxKeysCount(lockboxSnap.size);
+      setEquipment(equipmentSnap.docs.map(doc => ({
+        id: doc.id,
+        ...(doc.data() as Omit<Equipment, "id">)
+      })));
+      setHandToolCount(handToolsSnap.size);
+      setPowerToolCount(powerToolsSnap.size);
+    };
+
+    fetchData();
   }, []);
 
-  const loadDashboardData = async () => {
-    setLoading(true);
+  const brokenEquipment = equipment.filter(e =>
+    e.condition?.toLowerCase().includes("broken") ||
+    e.condition?.toLowerCase().includes("out of service")
+  );
 
-    const [equipment, handTools, powerTools] = await Promise.all([
-      fetchEquipment(),
-      fetchHandTools(),
-      fetchPowerTools(),
-    ]);
-
-    setEquipmentCount(equipment.length);
-    setBrokenCount(
-      equipment.filter((e) => e.condition === "Broken").length +
-        handTools.filter((t) => t.condition === "Broken").length +
-        powerTools.filter((t) => t.condition === "Broken").length
-    );
-    setHandToolsCount(handTools.length);
-    setPowerToolsCount(powerTools.length);
-
-    setLoading(false);
-  };
+  const recentEquipment = [...equipment]
+    .sort((a, b) => {
+      const aDate = a.createdAt?.seconds ?? 0;
+      const bDate = b.createdAt?.seconds ?? 0;
+      return bDate - aDate;
+    })
+    .slice(0, 5);
 
   return (
-    <Box sx={{ px: 2, py: 3 }}>
-      <Typography
-        variant={isMobile ? "h5" : "h4"}
-        fontWeight={600}
-        sx={{ mb: 4 }}
-      >
+    <Box sx={{ px: 4, py: 3 }}>
+      <Typography variant="h4" fontWeight="bold" gutterBottom>
         Dashboard
       </Typography>
 
-      {loading ? (
-        <CircularProgress />
-      ) : (
-        <>
-          {/* Summary Cards */}
-          <Grid container spacing={3} sx={{ mb: 4 }} {...({} as any)}>
-            <Grid item xs={12} sm={6} md={3} {...({} as any)}>
-              <DashboardStatsCard
-                title="Total Equipment"
-                value={equipmentCount}
-                icon={InventoryIcon}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3} {...({} as any)}>
-              <DashboardStatsCard
-                title="Broken Items"
-                value={brokenCount}
-                icon={WarningIcon}
-                color="#c62828"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3} {...({} as any)}>
-              <DashboardStatsCard
-                title="Hand Tools"
-                value={handToolsCount}
-                icon={BuildIcon}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3} {...({} as any)}>
-              <DashboardStatsCard
-                title="Power Tools"
-                value={powerToolsCount}
-                icon={PrecisionManufacturingIcon}
-              />
-            </Grid>
-          </Grid>
+      {/* Stat Cards */}
+      <Grid container spacing={2} mb={4}>
+        <Grid item xs={12} sm={6} md={3} {...({} as any)}>
+          <StatCard title="Assigned Keys" value={assignedKeysCount} />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3} {...({} as any)}>
+          <StatCard title="Lockbox Keys" value={lockboxKeysCount} />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3} {...({} as any)}>
+          <StatCard title="Total Equipment" value={equipment.length} />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3} {...({} as any)}>
+          <StatCard title="Out of Service Equipment" value={brokenEquipment.length} />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3} {...({} as any)}>
+          <StatCard title="Hand Tools" value={handToolCount} />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3} {...({} as any)}>
+          <StatCard title="Power Tools" value={powerToolCount} />
+        </Grid>
+      </Grid>
 
-          {/* Broken Items */}
-          <Paper
-            elevation={3}
-            sx={{
-              p: 3,
-              overflowX: "auto",
-              width: "100%",
-              maxWidth: "100%",
-            }}
-          >
-            <Typography
-              variant="h6"
-              fontWeight={600}
-              sx={{ mb: 2, whiteSpace: "nowrap" }}
-            >
-              Recently Marked as Broken
-            </Typography>
-            <BrokenItemsReport />
-          </Paper>
-        </>
-      )}
+      <Grid container spacing={4}>
+        {/* Out of Service Widget */}
+        <Grid item xs={12} md={6} {...({} as any)}>
+          <Card elevation={2} {...({} as any)}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Out of Service Equipment
+              </Typography>
+              <Divider sx={{ mb: 1 }} />
+              {brokenEquipment.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  All equipment is currently in service.
+                </Typography>
+              ) : (
+                <List dense>
+                  {brokenEquipment.slice(0, 5).map((item) => (
+                    <ListItem key={item.id} disablePadding>
+                      <ListItemText
+                        primary={item.name}
+                        secondary={`Condition: ${item.condition}`}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Recent Additions Widget */}
+        <Grid item xs={12} md={6} {...({} as any)}>
+          <Card elevation={2}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Recently Added Equipment
+              </Typography>
+              <Divider sx={{ mb: 1 }} />
+              {recentEquipment.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No new equipment added recently.
+                </Typography>
+              ) : (
+                <List dense>
+                  {recentEquipment.map((item) => (
+                    <ListItem key={item.id} disablePadding>
+                      <ListItemText
+                        primary={item.name}
+                        secondary={`Condition: ${item.condition}`}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
     </Box>
   );
 };
