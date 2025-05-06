@@ -38,6 +38,8 @@ import MigrateHoldersPage from "./pages/MigrateHoldersPage";
 import AssetList from "./components/MMS/Assets/AssetList";
 import AssetDetail from "./components/MMS/Assets/AssetDetail";
 import ComponentList from "./components/MMS/Components/ComponentList";
+import MMSOverview from "./components/MMS/MMSOverview";
+
 
 const App: React.FC = () => {
   interface AssignedKey {
@@ -134,7 +136,7 @@ const App: React.FC = () => {
           <Route path="/service/:id" element={<ServiceDetail />} />
           <Route path="/parts/:id" element={<PartDetail />} />
 
-          {/* MMS Routes */}
+          {/* MMS Routes */}        
           <Route path="/mms/assets" element={
             <Container maxWidth="lg">
               <Typography variant="h5" gutterBottom sx={{ fontWeight: 500 }}>
@@ -143,6 +145,12 @@ const App: React.FC = () => {
               <AssetList />
             </Container>
           } />
+          <Route path="/mms" element={
+          <Container maxWidth="lg">
+            <MMSOverview />
+          </Container>
+          } />
+
           <Route path="/mms/assets/:id" element={
             <Container maxWidth="lg">
               <AssetDetail />
