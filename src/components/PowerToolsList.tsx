@@ -21,6 +21,7 @@ import { fetchPowerTools } from "../services/powerToolsService";
 import { PowerTool } from "../types";
 import EditPowerToolModal from "./EditPowerToolModal";
 import AddPowerToolModal from "./AddPowerToolModal";
+import { useRole } from "../contexts/RoleContext"; // ✅ NEW
 
 const PowerToolsList: React.FC = () => {
   const [tools, setTools] = useState<PowerTool[]>([]);
@@ -29,6 +30,8 @@ const PowerToolsList: React.FC = () => {
   const [openAdd, setOpenAdd] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const { role } = useRole(); // ✅ NEW
+  const isAdmin = role === "admin"; // ✅ NEW
 
   const loadTools = async () => {
     setLoading(true);
@@ -47,11 +50,13 @@ const PowerToolsList: React.FC = () => {
         Power Tools
       </Typography>
 
-      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-        <Button variant="contained" onClick={() => setOpenAdd(true)}>
-          Add Power Tool
-        </Button>
-      </Box>
+      {isAdmin && (
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+          <Button variant="contained" onClick={() => setOpenAdd(true)}>
+            Add Power Tool
+          </Button>
+        </Box>
+      )}
 
       {loading ? (
         <CircularProgress />
@@ -64,7 +69,7 @@ const PowerToolsList: React.FC = () => {
                 <TableCell>Location</TableCell>
                 <TableCell>Condition</TableCell>
                 <TableCell>Serial Number</TableCell>
-                <TableCell />
+                {isAdmin && <TableCell />}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -74,11 +79,13 @@ const PowerToolsList: React.FC = () => {
                   <TableCell>{tool.location}</TableCell>
                   <TableCell>{tool.condition}</TableCell>
                   <TableCell>{tool.serialNumber}</TableCell>
-                  <TableCell align="right">
-                    <IconButton onClick={() => setEditing(tool)} size="small">
-                      <EditIcon />
-                    </IconButton>
-                  </TableCell>
+                  {isAdmin && (
+                    <TableCell align="right">
+                      <IconButton onClick={() => setEditing(tool)} size="small">
+                        <EditIcon />
+                      </IconButton>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -86,7 +93,7 @@ const PowerToolsList: React.FC = () => {
         </TableContainer>
       )}
 
-      {editing && (
+      {editing && isAdmin && (
         <EditPowerToolModal
           open={!!editing}
           onClose={() => setEditing(null)}
@@ -98,14 +105,16 @@ const PowerToolsList: React.FC = () => {
         />
       )}
 
-      <AddPowerToolModal
-        open={openAdd}
-        onClose={() => setOpenAdd(false)}
-        onSaved={() => {
-          loadTools();
-          setOpenAdd(false);
-        }}
-      />
+      {isAdmin && (
+        <AddPowerToolModal
+          open={openAdd}
+          onClose={() => setOpenAdd(false)}
+          onSaved={() => {
+            loadTools();
+            setOpenAdd(false);
+          }}
+        />
+      )}
     </Box>
   );
 };

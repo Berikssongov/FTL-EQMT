@@ -12,6 +12,7 @@ import {
 import { Equipment, Location } from "../types";
 import { addEquipment } from "../services/equipmentServices";
 import { fetchLocations } from "../services/locationsService";
+import { useRole } from "../contexts/RoleContext"; // ✅ Added
 
 interface Props {
   open: boolean;
@@ -20,6 +21,7 @@ interface Props {
 }
 
 const AddEquipmentModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
+  const { role, loading: roleLoading } = useRole(); // ✅
   const [form, setForm] = useState<Equipment>({
     name: "",
     category: "",
@@ -35,6 +37,7 @@ const AddEquipmentModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
   });
 
   const [locations, setLocations] = useState<Location[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (open) loadLocations();
@@ -71,10 +74,16 @@ const AddEquipmentModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
   };
 
   const handleSubmit = async () => {
+    if (roleLoading || role !== "admin") return;
+    setSubmitting(true);
     await addEquipment(form);
+    setSubmitting(false);
     onSaved();
     onClose();
   };
+
+  if (roleLoading) return null;
+  if (role !== "admin") return null;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -192,11 +201,15 @@ const AddEquipmentModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
               onChange={handleChange}
             />
           </Grid>
-        </Grid>
+          </Grid>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSubmit} variant="contained">
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          disabled={submitting}
+        >
           Save
         </Button>
       </DialogActions>

@@ -19,18 +19,22 @@ import {
   Grid,
   CircularProgress,
 } from "@mui/material";
-import { fetchLocations, addLocation } from "../services/locationsService"; // ✅ Service we'll build next
-import { Location } from "../types"; // ✅ We'll add type too
+import { fetchLocations, addLocation } from "../services/locationsService";
+import { Location } from "../types";
+import { useRole } from "../contexts/RoleContext";
 
 const ManageLocationsPage: React.FC = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [newLocationName, setNewLocationName] = useState("");
   const [saving, setSaving] = useState(false);
+  const { role } = useRole();
 
   useEffect(() => {
-    loadLocations();
-  }, []);
+    if (role === "admin") {
+      loadLocations();
+    }
+  }, [role]);
 
   const loadLocations = async () => {
     try {
@@ -54,6 +58,16 @@ const ManageLocationsPage: React.FC = () => {
       setSaving(false);
     }
   };
+
+  if (role !== "admin") {
+    return (
+      <Box sx={{ p: 4 }}>
+        <Typography variant="h6" color="error" fontWeight={500}>
+          🚫 You do not have permission to access this page.
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 3 }}>

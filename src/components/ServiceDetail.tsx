@@ -1,4 +1,3 @@
-// src/components/ServiceDetail.tsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -15,10 +14,12 @@ import EditIcon from "@mui/icons-material/Edit";
 import { getServiceRecordById } from "../services/serviceRecordsService";
 import { ServiceRecord } from "../types";
 import EditServiceModal from "./EditServiceModal";
+import { useRole } from "../contexts/RoleContext";
 
 const ServiceDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { role } = useRole(); // ✅ NEW
   const [service, setService] = useState<ServiceRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
@@ -39,6 +40,8 @@ const ServiceDetail: React.FC = () => {
     }
   };
 
+  const canEdit = role === "admin" || role === "manager"; // ✅ NEW
+
   if (loading) return <CircularProgress />;
   if (!service) return <Typography>Service record not found.</Typography>;
 
@@ -53,9 +56,11 @@ const ServiceDetail: React.FC = () => {
           <Typography variant="h5" fontWeight={600}>
             Service Details
           </Typography>
-          <IconButton onClick={() => setEditOpen(true)}>
-            <EditIcon />
-          </IconButton>
+          {canEdit && (
+            <IconButton onClick={() => setEditOpen(true)}>
+              <EditIcon />
+            </IconButton>
+          )}
         </Box>
 
         <Typography><strong>Summary:</strong> {service.summary}</Typography>
@@ -71,10 +76,7 @@ const ServiceDetail: React.FC = () => {
         <Divider sx={{ my: 2 }} />
         <Typography variant="subtitle1" fontWeight={600}>Line Items</Typography>
         {service.items?.map((item, index) => (
-          <Box
-            key={index}
-            sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}
-          >
+          <Box key={index} sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
             <Typography>{item.description}</Typography>
             <Typography>${item.cost.toFixed(2)}</Typography>
           </Box>
@@ -86,7 +88,7 @@ const ServiceDetail: React.FC = () => {
         </Typography>
       </Paper>
 
-      {editOpen && service && (
+      {canEdit && editOpen && service && (
         <EditServiceModal
           open={editOpen}
           onClose={() => setEditOpen(false)}

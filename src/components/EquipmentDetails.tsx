@@ -1,3 +1,4 @@
+// Your existing imports
 import React, { useEffect, useState } from "react";
 import {
   Typography,
@@ -20,8 +21,7 @@ import EquipmentEditModal from "./EquipmentEditModal";
 import AddServiceModal from "./AddServiceModal";
 import AddPartModal from "./AddPartModal";
 
-import { ServiceRecord } from "../types"; // ✅ this must be present
-
+import { useRole } from "../contexts/RoleContext";
 
 const EquipmentDetails: React.FC = () => {
   const { id } = useParams();
@@ -33,14 +33,10 @@ const EquipmentDetails: React.FC = () => {
   const [partOpen, setPartOpen] = useState(false);
   const [services, setServices] = useState<EquipmentServiceRecord[]>([]);
   const [parts, setParts] = useState<EquipmentPart[]>([]);
+  const { role, loading: roleLoading } = useRole(); // ✅ roleLoading added
 
-  useEffect(() => {
-    if (id) {
-      loadEquipment(id);
-      loadServices(id);
-      loadParts(id);
-    }
-  }, [id]);
+  const canEditEquipment = role === "admin";
+  const canAddServiceOrParts = role === "admin" || role === "manager";
 
   const loadEquipment = async (equipmentId: string) => {
     const data = await getEquipmentById(equipmentId);
@@ -82,7 +78,15 @@ const EquipmentDetails: React.FC = () => {
     }
   };
 
-  if (loading) return <CircularProgress />;
+  useEffect(() => {
+    if (!roleLoading && id && role) {
+      loadEquipment(id);
+      loadServices(id);
+      loadParts(id);
+    }
+  }, [id, role, roleLoading]);
+
+  if (roleLoading || loading) return <CircularProgress />;
   if (!equipment) return <Typography>Equipment not found.</Typography>;
 
   return (
@@ -96,9 +100,11 @@ const EquipmentDetails: React.FC = () => {
           <Typography variant="h5" fontWeight={600}>
             {equipment.name}
           </Typography>
-          <IconButton onClick={() => setEditOpen(true)} color="primary">
-            <EditIcon />
-          </IconButton>
+          {canEditEquipment && (
+            <IconButton onClick={() => setEditOpen(true)} color="primary">
+              <EditIcon />
+            </IconButton>
+          )}
         </Box>
 
         <Grid container spacing={2} {...({} as any)}>
@@ -162,96 +168,97 @@ const EquipmentDetails: React.FC = () => {
       </Paper>
 
       <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", width: "100%" }}>
-  {/* Service History */}
-  <Box sx={{ flex: "1 1 48%", minWidth: "300px" }}>
-    <Paper elevation={2} sx={{ p: 2, height: "100%" }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <Typography variant="h6" fontWeight={600}>Service History</Typography>
-        <Button variant="outlined" size="small" onClick={() => setServiceOpen(true)}>
-          + Add
-        </Button>
+        <Box sx={{ flex: "1 1 48%", minWidth: "300px" }}>
+          <Paper elevation={2} sx={{ p: 2, height: "100%" }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+              <Typography variant="h6" fontWeight={600}>Service History</Typography>
+              {canAddServiceOrParts && (
+                <Button variant="outlined" size="small" onClick={() => setServiceOpen(true)}>
+                  + Add
+                </Button>
+              )}
+            </Box>
+
+            {services.length === 0 ? (
+              <Typography color="textSecondary">No service records yet.</Typography>
+            ) : (
+              services.map((svc) => (
+                <Box
+                  key={svc.id}
+                  sx={{
+                    mb: 2,
+                    p: 1.5,
+                    border: "1px solid #ccc",
+                    borderRadius: 1,
+                    cursor: "pointer",
+                    transition: "0.2s ease",
+                    "&:hover": { backgroundColor: "#f9f9f9" },
+                  }}
+                  onClick={() => navigate(`/service/${svc.id}`)}
+                >
+                  <Typography fontWeight={600}>
+                    {svc.summary || "Service Entry"}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    {new Date(svc.date).toLocaleDateString()}
+                  </Typography>
+                  {svc.totalCost > 0 && (
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      <strong>Total:</strong> ${svc.totalCost.toFixed(2)}
+                    </Typography>
+                  )}
+                </Box>
+              ))
+            )}
+          </Paper>
+        </Box>
+
+        <Box sx={{ flex: "1 1 48%", minWidth: "300px" }}>
+          <Paper elevation={2} sx={{ p: 2, height: "100%" }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+              <Typography variant="h6" fontWeight={600}>Parts</Typography>
+              {canAddServiceOrParts && (
+                <Button variant="outlined" size="small" onClick={() => setPartOpen(true)}>
+                  + Add
+                </Button>
+              )}
+            </Box>
+
+            {parts.length === 0 ? (
+              <Typography color="textSecondary">No parts recorded yet.</Typography>
+            ) : (
+              parts.map((part) => (
+                <Box
+                  key={part.id}
+                  sx={{
+                    mb: 2,
+                    p: 1.5,
+                    border: "1px solid #ccc",
+                    borderRadius: 1,
+                    cursor: "pointer",
+                    transition: "0.2s ease",
+                    "&:hover": { backgroundColor: "#f9f9f9" },
+                  }}
+                  onClick={() => navigate(`/parts/${part.id}`)}
+                >
+                  <Typography fontWeight={600}>{part.name}</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Part #: {part.partNumber || "N/A"} — ${part.price?.toFixed(2) || "—"}
+                  </Typography>
+                  {part.vendor && (
+                    <Typography variant="body2" color="textSecondary">
+                      Vendor: {part.vendor}
+                    </Typography>
+                  )}
+                </Box>
+              ))
+            )}
+          </Paper>
+        </Box>
       </Box>
 
-      {services.length === 0 ? (
-        <Typography color="textSecondary">No service records yet.</Typography>
-      ) : (
-        services.map((svc) => (
-          <Box
-            key={svc.id}
-            sx={{
-              mb: 2,
-              p: 1.5,
-              border: "1px solid #ccc",
-              borderRadius: 1,
-              cursor: "pointer",
-              transition: "0.2s ease",
-              "&:hover": { backgroundColor: "#f9f9f9" },
-            }}
-            onClick={() => navigate(`/service/${svc.id}`)}
-          >
-            <Typography fontWeight={600}>
-              {svc.summary || "Service Entry"}
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              {new Date(svc.date).toLocaleDateString()}
-            </Typography>
-            {svc.totalCost > 0 && (
-              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                <strong>Total:</strong> ${svc.totalCost.toFixed(2)}
-              </Typography>
-            )}
-          </Box>
-        ))
-      )}
-    </Paper>
-  </Box>
-
-  {/* Parts */}
-  <Box sx={{ flex: "1 1 48%", minWidth: "300px" }}>
-    <Paper elevation={2} sx={{ p: 2, height: "100%" }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <Typography variant="h6" fontWeight={600}>Parts</Typography>
-        <Button variant="outlined" size="small" onClick={() => setPartOpen(true)}>
-          + Add
-        </Button>
-      </Box>
-
-      {parts.length === 0 ? (
-        <Typography color="textSecondary">No parts recorded yet.</Typography>
-      ) : (
-        parts.map((part) => (
-          <Box
-            key={part.id}
-            sx={{
-              mb: 2,
-              p: 1.5,
-              border: "1px solid #ccc",
-              borderRadius: 1,
-              cursor: "pointer",
-              transition: "0.2s ease",
-              "&:hover": { backgroundColor: "#f9f9f9" },
-            }}
-            onClick={() => navigate(`/parts/${part.id}`)}
-          >
-            <Typography fontWeight={600}>{part.name}</Typography>
-            <Typography variant="body2" color="textSecondary">
-              Part #: {part.partNumber || "N/A"} — ${part.price?.toFixed(2) || "—"}
-            </Typography>
-            {part.vendor && (
-              <Typography variant="body2" color="textSecondary">
-                Vendor: {part.vendor}
-              </Typography>
-            )}
-          </Box>
-        ))
-      )}
-    </Paper>
-  </Box>
-</Box>
-
-
-      {/* Modals */}
-      {editOpen && equipment && (
+        {/* ✅ Modals (guarded by roles) */}
+        {canEditEquipment && editOpen && equipment && (
         <EquipmentEditModal
           open={editOpen}
           onClose={() => setEditOpen(false)}
@@ -260,7 +267,7 @@ const EquipmentDetails: React.FC = () => {
         />
       )}
 
-      {serviceOpen && (
+      {canAddServiceOrParts && serviceOpen && (
         <AddServiceModal
           open={serviceOpen}
           onClose={() => setServiceOpen(false)}
@@ -269,7 +276,7 @@ const EquipmentDetails: React.FC = () => {
         />
       )}
 
-      {partOpen && (
+      {canAddServiceOrParts && partOpen && (
         <AddPartModal
           open={partOpen}
           onClose={() => setPartOpen(false)}

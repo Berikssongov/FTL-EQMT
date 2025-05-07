@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import {
   Table,
   TableBody,
@@ -20,6 +20,7 @@ import { fetchEquipment } from "../services/equipmentServices";
 import { Equipment } from "../types";
 import AddEquipmentModal from "./AddEquipmentModal";
 import { useNavigate } from "react-router-dom";
+import { useRole } from "../contexts/RoleContext";
 
 const EquipmentList: React.FC = () => {
   const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
@@ -28,6 +29,7 @@ const EquipmentList: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const { role } = useRole();
 
   const loadEquipment = async () => {
     setLoading(true);
@@ -51,11 +53,13 @@ const EquipmentList: React.FC = () => {
         Equipment List
       </Typography>
 
-      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-        <Button variant="contained" onClick={() => setOpenModal(true)}>
-          Add Equipment
-        </Button>
-      </Box>
+      {role === "admin" && (
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+          <Button variant="contained" onClick={() => setOpenModal(true)}>
+            Add Equipment
+          </Button>
+        </Box>
+      )}
 
       {loading ? (
         <CircularProgress />
@@ -95,14 +99,16 @@ const EquipmentList: React.FC = () => {
         </TableContainer>
       )}
 
-      <AddEquipmentModal
-        open={openModal}
-        onClose={() => setOpenModal(false)}
-        onSaved={() => {
-          loadEquipment();
-          setOpenModal(false);
-        }}
-      />
+      {role === "admin" && (
+        <AddEquipmentModal
+          open={openModal}
+          onClose={() => setOpenModal(false)}
+          onSaved={() => {
+            loadEquipment();
+            setOpenModal(false);
+          }}
+        />
+      )}
     </Box>
   );
 };

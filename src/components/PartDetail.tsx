@@ -1,4 +1,3 @@
-// src/components/PartDetail.tsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -15,10 +14,12 @@ import EditIcon from "@mui/icons-material/Edit";
 import { getPartRecordById } from "../services/partsRecordsService";
 import { PartRecord } from "../types";
 import EditPartModal from "./EditPartModal";
+import { useRole } from "../contexts/RoleContext";
 
 const PartDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { role } = useRole(); // ✅ NEW
   const [part, setPart] = useState<PartRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
@@ -39,6 +40,8 @@ const PartDetail: React.FC = () => {
     }
   };
 
+  const canEdit = role === "admin" || role === "manager"; // ✅ NEW
+
   if (loading) return <CircularProgress />;
   if (!part) return <Typography>Part record not found.</Typography>;
 
@@ -53,9 +56,11 @@ const PartDetail: React.FC = () => {
           <Typography variant="h5" fontWeight={600}>
             Part Details
           </Typography>
-          <IconButton onClick={() => setEditOpen(true)}>
-            <EditIcon />
-          </IconButton>
+          {canEdit && (
+            <IconButton onClick={() => setEditOpen(true)}>
+              <EditIcon />
+            </IconButton>
+          )}
         </Box>
 
         <Typography><strong>Name:</strong> {part.partName}</Typography>
@@ -78,7 +83,7 @@ const PartDetail: React.FC = () => {
         </Typography>
       </Paper>
 
-      {editOpen && part && (
+      {canEdit && editOpen && part && (
         <EditPartModal
           open={editOpen}
           onClose={() => setEditOpen(false)}

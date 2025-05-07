@@ -13,6 +13,8 @@ import {
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 
+import TaskList from "./Tasks/TaskList";
+
 interface Equipment {
   id: string;
   name: string;
@@ -80,83 +82,99 @@ const DashboardHome: React.FC = () => {
         Dashboard
       </Typography>
 
-      {/* Stat Cards */}
-      <Grid container spacing={2} mb={4}>
-        <Grid item xs={12} sm={6} md={3} {...({} as any)}>
-          <StatCard title="Assigned Keys" value={assignedKeysCount} />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3} {...({} as any)}>
-          <StatCard title="Lockbox Keys" value={lockboxKeysCount} />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3} {...({} as any)}>
-          <StatCard title="Total Equipment" value={equipment.length} />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3} {...({} as any)}>
-          <StatCard title="Out of Service Equipment" value={brokenEquipment.length} />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3} {...({} as any)}>
-          <StatCard title="Hand Tools" value={handToolCount} />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3} {...({} as any)}>
-          <StatCard title="Power Tools" value={powerToolCount} />
-        </Grid>
-      </Grid>
-
       <Grid container spacing={4}>
-        {/* Out of Service Widget */}
-        <Grid item xs={12} md={6} {...({} as any)}>
-          <Card elevation={2} {...({} as any)}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Out of Service Equipment
-              </Typography>
-              <Divider sx={{ mb: 1 }} />
-              {brokenEquipment.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  All equipment is currently in service.
-                </Typography>
-              ) : (
-                <List dense>
-                  {brokenEquipment.slice(0, 5).map((item) => (
-                    <ListItem key={item.id} disablePadding>
-                      <ListItemText
-                        primary={item.name}
-                        secondary={`Condition: ${item.condition}`}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Recent Additions Widget */}
-        <Grid item xs={12} md={6} {...({} as any)}>
+        {/* LEFT: Task List */}
+        <Grid item xs={12} md={4} {...({} as any)}>
           <Card elevation={2}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                Recently Added Equipment
+                Ongoing Tasks & Priorities
               </Typography>
-              <Divider sx={{ mb: 1 }} />
-              {recentEquipment.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No new equipment added recently.
-                </Typography>
-              ) : (
-                <List dense>
-                  {recentEquipment.map((item) => (
-                    <ListItem key={item.id} disablePadding>
-                      <ListItemText
-                        primary={item.name}
-                        secondary={`Condition: ${item.condition}`}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
+              <Divider sx={{ mb: 2 }} />
+              <TaskList listStyle />
             </CardContent>
           </Card>
+        </Grid>
+
+        {/* RIGHT: Dashboard Stats and Widgets */}
+        <Grid item xs={12} md={8} {...({} as any)}>
+          {/* Stat Cards */}
+          <Grid container spacing={2} mb={4}>
+            <Grid item xs={6} sm={4} {...({} as any)}>
+              <StatCard title="Assigned Keys" value={assignedKeysCount} />
+            </Grid>
+            <Grid item xs={6} sm={4} {...({} as any)}>
+              <StatCard title="Lockbox Keys" value={lockboxKeysCount} />
+            </Grid>
+            <Grid item xs={6} sm={4} {...({} as any)}>
+              <StatCard title="Total Equipment" value={equipment.length} />
+            </Grid>
+            <Grid item xs={6} sm={4} {...({} as any)}>
+              <StatCard title="Out of Service Equipment" value={brokenEquipment.length} />
+            </Grid>
+            <Grid item xs={6} sm={4} {...({} as any)}>
+              <StatCard title="Hand Tools" value={handToolCount} />
+            </Grid>
+            <Grid item xs={6} sm={4} {...({} as any)}>
+              <StatCard title="Power Tools" value={powerToolCount} />
+            </Grid>
+          </Grid>
+
+          <Grid container spacing={4}>
+            <Grid item xs={12} sm={6} {...({} as any)}>
+              <Card elevation={2}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    Out of Service Equipment
+                  </Typography>
+                  <Divider sx={{ mb: 1 }} />
+                  {brokenEquipment.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">
+                      All equipment is currently in service.
+                    </Typography>
+                  ) : (
+                    <List dense>
+                      {brokenEquipment.slice(0, 5).map((item) => (
+                        <ListItem key={item.id} disablePadding>
+                          <ListItemText
+                            primary={item.name}
+                            secondary={`Condition: ${item.condition}`}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} sm={6} {...({} as any)}>
+              <Card elevation={2}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    Recently Added Equipment
+                  </Typography>
+                  <Divider sx={{ mb: 1 }} />
+                  {recentEquipment.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">
+                      No new equipment added recently.
+                    </Typography>
+                  ) : (
+                    <List dense>
+                      {recentEquipment.map((item) => (
+                        <ListItem key={item.id} disablePadding>
+                          <ListItemText
+                            primary={item.name}
+                            secondary={`Condition: ${item.condition}`}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
         </Grid>
       </Grid>
     </Box>

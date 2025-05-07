@@ -1,4 +1,3 @@
-// src/components/Keys/KeyManagementPage.tsx
 import React, { useEffect, useState } from "react";
 import {
   Container,
@@ -16,6 +15,7 @@ import { db } from "../../firebase";
 import KeyFormPanel from "./KeyFormPanel";
 import KeySearchPanel from "./KeySearchPanel";
 import KeyLogTable from "./KeyLogTable";
+import { useRole } from "../../contexts/RoleContext"; // ✅ NEW
 
 interface KeyLogEntry {
   id: string;
@@ -27,6 +27,7 @@ interface KeyLogEntry {
 }
 
 const KeyManagementPage: React.FC = () => {
+  const { role } = useRole(); // ✅ NEW
   const [logs, setLogs] = useState<KeyLogEntry[]>([]);
 
   useEffect(() => {
@@ -58,16 +59,11 @@ const KeyManagementPage: React.FC = () => {
         Key Management
       </Typography>
 
-      <KeyFormPanel />
+      {(role === "manager" || role === "admin") && <KeyFormPanel />} {/* ✅ Restrict form access */}
 
       <Divider sx={{ my: 4 }} />
-
       <KeySearchPanel />
-
-      {/* Recent Activity (5 most recent) */}
       <KeyLogTable rows={logs.slice(0, 5)} />
-
-      {/* Full Log Below */}
       <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mt: 5 }}>
         Full Key History
       </Typography>

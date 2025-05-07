@@ -22,6 +22,7 @@ import { fetchHandTools } from "../services/handToolsService";
 import { HandTool } from "../types";
 import EditHandToolModal from "./EditHandToolsModal";
 import AddHandToolModal from "./AddHandToolModal";
+import { useRole } from "../contexts/RoleContext"; // ✅ NEW
 
 const HandToolsList: React.FC = () => {
   const [tools, setTools] = useState<HandTool[]>([]);
@@ -30,6 +31,8 @@ const HandToolsList: React.FC = () => {
   const [openAdd, setOpenAdd] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const { role } = useRole(); // ✅ NEW
+  const isAdmin = role === "admin"; // ✅ NEW
 
   const loadTools = async () => {
     setLoading(true);
@@ -48,11 +51,13 @@ const HandToolsList: React.FC = () => {
         Hand Tools
       </Typography>
 
-      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-        <Button variant="contained" onClick={() => setOpenAdd(true)}>
-          Add Hand Tool
-        </Button>
-      </Box>
+      {isAdmin && (
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+          <Button variant="contained" onClick={() => setOpenAdd(true)}>
+            Add Hand Tool
+          </Button>
+        </Box>
+      )}
 
       {loading ? (
         <CircularProgress />
@@ -65,7 +70,7 @@ const HandToolsList: React.FC = () => {
                 <TableCell>Location</TableCell>
                 <TableCell>Condition</TableCell>
                 <TableCell>Quantity</TableCell>
-                <TableCell />
+                {isAdmin && <TableCell />}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -75,11 +80,13 @@ const HandToolsList: React.FC = () => {
                   <TableCell>{tool.location}</TableCell>
                   <TableCell>{tool.condition}</TableCell>
                   <TableCell>{tool.quantity}</TableCell>
-                  <TableCell align="right">
-                    <IconButton onClick={() => setEditing(tool)} size="small">
-                      <EditIcon />
-                    </IconButton>
-                  </TableCell>
+                  {isAdmin && (
+                    <TableCell align="right">
+                      <IconButton onClick={() => setEditing(tool)} size="small">
+                        <EditIcon />
+                      </IconButton>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -87,7 +94,7 @@ const HandToolsList: React.FC = () => {
         </TableContainer>
       )}
 
-      {editing && (
+      {editing && isAdmin && (
         <EditHandToolModal
           open={!!editing}
           onClose={() => setEditing(null)}
@@ -99,14 +106,16 @@ const HandToolsList: React.FC = () => {
         />
       )}
 
-      <AddHandToolModal
-        open={openAdd}
-        onClose={() => setOpenAdd(false)}
-        onSaved={() => {
-          loadTools();
-          setOpenAdd(false);
-        }}
-      />
+      {isAdmin && (
+        <AddHandToolModal
+          open={openAdd}
+          onClose={() => setOpenAdd(false)}
+          onSaved={() => {
+            loadTools();
+            setOpenAdd(false);
+          }}
+        />
+      )}
     </Box>
   );
 };

@@ -1,12 +1,15 @@
+// src/components/MMS/MMSOverview.tsx
 import React from "react";
-import { Box, Typography, Paper, Divider } from "@mui/material";
+import { Box, Typography, Paper, Divider, Container } from "@mui/material";
 
 const MMSOverview: React.FC = () => {
   return (
-    <Box>
-      <Typography variant="h4" fontWeight={600} gutterBottom>
-        🏢 Maintenance Management System (MMS)
-      </Typography>
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      <Box textAlign="center">
+        <Typography variant="h4" fontWeight={600} gutterBottom>
+          🏢 Maintenance Management System (MMS)
+        </Typography>
+      </Box>
 
       <Paper sx={{ p: 3, mt: 2 }}>
         <Typography variant="body1" sx={{ mb: 2 }}>
@@ -22,7 +25,7 @@ const MMSOverview: React.FC = () => {
           You can start by viewing the Assets section from the navigation bar. New features will appear here as they are developed.
         </Typography>
       </Paper>
-    </Box>
+    </Container>
   );
 };
 

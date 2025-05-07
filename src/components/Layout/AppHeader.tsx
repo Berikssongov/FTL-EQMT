@@ -10,14 +10,18 @@ import {
   MenuItem,
   Tabs,
   Tab,
+  Button,
 } from "@mui/material";
 import { Settings as SettingsIcon } from "@mui/icons-material";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { useRole } from "../../contexts/RoleContext"; 
 
 const AppHeader: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const { user, logout } = useAuth();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
     navigate(newValue);
@@ -43,6 +47,8 @@ const AppHeader: React.FC = () => {
     navigate(path);
     handleSettingsClose();
   };
+  const { role } = useRole();
+  
 
   return (
     <>
@@ -52,7 +58,7 @@ const AppHeader: React.FC = () => {
         elevation={0}
         sx={{ backgroundColor: "#ffffff", color: "#2b4635", py: 1 }}
       >
-        <Toolbar sx={{ justifyContent: "flex-start" }}>
+        <Toolbar sx={{ justifyContent: "space-between" }}>
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, lineHeight: 1 }}>
               T.E.A.M.
@@ -60,6 +66,21 @@ const AppHeader: React.FC = () => {
             <Typography variant="subtitle2" sx={{ mt: 0.5 }}>
               Tracking Equipment + Asset Management
             </Typography>
+          </Box>
+
+          <Box>
+            {user ? (
+              <Box display="flex" alignItems="center" gap={2}>
+                <Typography variant="body2">{user.email}</Typography>
+                <Button color="inherit" onClick={logout}>
+                  Logout
+                </Button>
+              </Box>
+            ) : (
+              <Button color="inherit" onClick={() => navigate("/login")}>
+                Login / Sign Up
+              </Button>
+            )}
           </Box>
         </Toolbar>
       </AppBar>
@@ -101,7 +122,11 @@ const AppHeader: React.FC = () => {
               <SettingsIcon />
             </IconButton>
             <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleSettingsClose}>
-              <MenuItem onClick={() => handleNav("/locations")}>Manage Locations</MenuItem>
+            {role === "admin" && (
+  <MenuItem onClick={() => handleNav("/locations")}>
+    Manage Locations
+  </MenuItem>
+)}
               <MenuItem onClick={() => handleNav("/keys-assigned")}>Keys Assigned</MenuItem>
               <MenuItem onClick={() => handleNav("/keys-lockbox")}>Lockbox Keys</MenuItem>
             </Menu>

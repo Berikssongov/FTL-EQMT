@@ -1,4 +1,3 @@
-// src/components/Keys/KeyFormPanel.tsx
 import React, { useEffect, useState } from "react";
 import {
   Paper,
@@ -10,7 +9,6 @@ import {
   FormControl,
   InputLabel,
   Grid,
-  SelectChangeEvent,
   Alert,
 } from "@mui/material";
 import {
@@ -22,6 +20,7 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { db } from "../../firebase";
+import { useRole } from "../../contexts/RoleContext"; // ✅ NEW
 
 interface RestrictedKey {
   id: string;
@@ -47,6 +46,10 @@ interface NonRestrictedKey {
 type KeyData = RestrictedKey | NonRestrictedKey;
 
 const KeyFormPanel: React.FC = () => {
+  const { role } = useRole(); // ✅ NEW
+
+  if (role !== "manager" && role !== "admin") return null; // ✅ Hide if not allowed
+
   const [keys, setKeys] = useState<KeyData[]>([]);
   const [keyName, setKeyName] = useState("");
   const [action, setAction] = useState("Signing Out");
@@ -83,6 +86,8 @@ const KeyFormPanel: React.FC = () => {
       return;
     }
 
+    const isBypass = person.trim().toLowerCase() === "created" && role === "admin"; // ✅ NEW: Admin-only bypass
+
     if (!matchingKey) {
       const newData = isRestricted
         ? {
@@ -109,10 +114,9 @@ const KeyFormPanel: React.FC = () => {
     } else if (matchingKey.isRestricted) {
       const keyRef = doc(db, "keys", matchingKey.id);
       const current = matchingKey.currentHolder;
-      const isBypass = person.trim().toLowerCase() === "created";
 
       if (action === "Signing Out") {
-        if (current.type !== "lockbox") {
+        if (!isBypass && current.type !== "lockbox") {
           setError(`This key is not in a lockbox and cannot be signed out.`);
           return;
         }
@@ -121,14 +125,10 @@ const KeyFormPanel: React.FC = () => {
           currentHolder: { type: "person", name: person.trim() },
         });
       } else {
-        if (!isBypass && current.type !== "person") {
-          setError(`This key is not signed out to anyone.`);
-          return;
-        }
-
         if (
           !isBypass &&
-          current.name.trim().toLowerCase() !== person.trim().toLowerCase()
+          (current.type !== "person" ||
+            current.name.trim().toLowerCase() !== person.trim().toLowerCase())
         ) {
           setError(
             `This key is not signed out to ${person}. It's with ${current.name}.`
@@ -151,7 +151,6 @@ const KeyFormPanel: React.FC = () => {
       );
 
       if (action === "Signing Out") {
-        // Remove 1 from lockbox
         const from = holders.find(
           (h) =>
             h.type === "lockbox" &&
@@ -165,14 +164,12 @@ const KeyFormPanel: React.FC = () => {
 
         from.quantity -= 1;
         if (from.quantity === 0) {
-          const index = holders.indexOf(from);
-          holders.splice(index, 1);
+          holders.splice(holders.indexOf(from), 1);
         }
 
         if (existing) existing.quantity += 1;
         else holders.push({ type: "person", name, quantity: 1 });
       } else {
-        // Signing In: Remove 1 from person
         const from = holders.find(
           (h) =>
             h.type === "person" &&
@@ -186,8 +183,7 @@ const KeyFormPanel: React.FC = () => {
 
         from.quantity -= 1;
         if (from.quantity === 0) {
-          const index = holders.indexOf(from);
-          holders.splice(index, 1);
+          holders.splice(holders.indexOf(from), 1);
         }
 
         if (existing) existing.quantity += 1;
