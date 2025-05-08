@@ -1,15 +1,13 @@
-// src/components/MMS/Components/ComponentList.tsx
-
 import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
   Paper,
-  Grid,
   Button,
   CircularProgress,
 } from "@mui/material";
 import { collection, getDocs, query, where } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 import { db } from "../../../firebase";
 import AddComponentModal from "./AddComponentModal";
 import { format } from "date-fns";
@@ -23,6 +21,8 @@ type ComponentItem = {
   name: string;
   type: string;
   location?: string;
+  category?: string;
+  condition?: string;
   inspection: {
     frequency: string;
     lastChecked: string | null;
@@ -35,6 +35,7 @@ const ComponentList: React.FC<Props> = ({ assetId }) => {
   const [components, setComponents] = useState<ComponentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const navigate = useNavigate();
 
   const fetchComponents = async () => {
     setLoading(true);
@@ -60,14 +61,7 @@ const ComponentList: React.FC<Props> = ({ assetId }) => {
 
   return (
     <Box sx={{ mt: 4 }}>
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 2,
-        }}
-      >
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
         <Typography variant="h5">🧩 Components</Typography>
         <Button variant="contained" onClick={() => setModalOpen(true)}>
           Add Component
@@ -81,40 +75,43 @@ const ComponentList: React.FC<Props> = ({ assetId }) => {
       ) : components.length === 0 ? (
         <Typography color="textSecondary">No components found.</Typography>
       ) : (
-        <Grid container spacing={2}>
+        <Box>
           {components.map((comp) => (
-            <Grid item xs={12} sm={6} md={4} key={comp.id} {...({} as any)}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight={500}>
-                  {comp.name}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Type: {comp.type}
-                </Typography>
-                {comp.location && (
-                  <Typography variant="body2" color="textSecondary">
-                    Location: {comp.location}
-                  </Typography>
-                )}
-                <Typography variant="body2" color="textSecondary">
-                  Inspection Status: {comp.inspection.status}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Next Due:{" "}
-                  {comp.inspection.nextDue
-                    ? format(new Date(comp.inspection.nextDue), "yyyy-MM-dd")
-                    : "Not set"}
-                </Typography>
-              </Paper>
-            </Grid>
+            <Paper
+              key={comp.id}
+              sx={{
+                p: 2,
+                mb: 2,
+                cursor: "pointer",
+                transition: "background-color 0.2s",
+                "&:hover": { backgroundColor: "#f5f5f5" },
+              }}
+              onClick={() => navigate(`/components/${comp.id}`)}
+            >
+              <Typography variant="subtitle1" fontWeight={500}>
+                {comp.name}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                Type: {comp.type} • Category: {comp.category} • Location: {comp.location}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                Condition: {comp.condition} • Next Inspection:{" "}
+                {comp.inspection?.nextDue
+                  ? format(new Date(comp.inspection.nextDue), "yyyy-MM-dd")
+                  : "Not set"}
+              </Typography>
+            </Paper>
           ))}
-        </Grid>
+        </Box>
       )}
 
       <AddComponentModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onSaved={fetchComponents}
+        onSaved={() => {
+          setModalOpen(false);
+          fetchComponents();
+        }}
         assetId={assetId}
       />
     </Box>

@@ -38,6 +38,8 @@ import AssetDetail from "./components/MMS/Assets/AssetDetail";
 import { RoleProvider } from "./contexts/RoleContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import LoginPage from "./pages/LoginPage";
+import ComponentDetail from "./components/MMS/Components/ComponentDetail";
+
 
 
 const App: React.FC = () => {
@@ -147,6 +149,9 @@ const App: React.FC = () => {
               </Container>
             } />
             <Route path="/login" element={<LoginPage />} />
+
+            <Route path="/components/:id" element={<ComponentDetail />} />
+
 
           </Routes>
         </Box>
