@@ -1,59 +1,94 @@
-// MMS/Assets/AssetDetail.tsx
 import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
-  CircularProgress,
+  Paper,
+  Button,
   Divider,
+  CircularProgress,
 } from "@mui/material";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../../firebase";
+import ComponentList from "../Components/ComponentList";
 
-import ComponentList from "../Components/ComponentList"; // add this import
-
-interface Asset {
+type Asset = {
+  id: string;
   name: string;
-  assetNumber: string;
   category: string;
-}
+  type?: string;
+  description?: string;
+};
 
-const AssetDetail: React.FC = () => {
+const AssetDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [asset, setAsset] = useState<Asset | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const fetchAsset = async () => {
-    if (!id) return;
-    const ref = doc(db, "assets", id);
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
-      setAsset(snap.data() as Asset);
-    }
-    setLoading(false);
-  };
+  const navigate = useNavigate();
 
   useEffect(() => {
+    if (!id) return;
+    const fetchAsset = async () => {
+      setLoading(true);
+      try {
+        const assetRef = doc(db, "assets", id);
+        const assetSnap = await getDoc(assetRef);
+        if (assetSnap.exists()) {
+          setAsset({ id: assetSnap.id, ...assetSnap.data() } as Asset);
+        }
+      } catch (error) {
+        console.error("Error fetching asset:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchAsset();
   }, [id]);
 
-  if (loading) return <CircularProgress />;
+  if (loading) {
+    return (
+      <Box sx={{ mt: 6, textAlign: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
-  if (!asset) return <Typography>Asset not found.</Typography>;
+  if (!asset) {
+    return (
+      <Box sx={{ mt: 6, textAlign: "center" }}>
+        <Typography variant="h6">Asset not found.</Typography>
+        <Button variant="outlined" sx={{ mt: 2 }} onClick={() => navigate(-1)}>
+          Go Back
+        </Button>
+      </Box>
+    );
+  }
 
   return (
-    <Box>
-      <Typography variant="h5" fontWeight={600}>
+    <Box sx={{ maxWidth: 1000, mx: "auto", py: 4 }}>
+      <Button variant="outlined" onClick={() => navigate(-1)}>
+        ← Back to Assets
+      </Button>
+
+      <Typography variant="h4" fontWeight={600} sx={{ mt: 2 }}>
         {asset.name}
       </Typography>
-      <Typography variant="subtitle1" color="text.secondary">
-        #{asset.assetNumber} — {asset.category}
+      <Typography variant="subtitle1" color="textSecondary" sx={{ mb: 2 }}>
+        Category: {asset.category} • Type: {asset.type || "N/A"}
       </Typography>
-      <Divider sx={{ my: 2 }} />
-      <Typography>More detail sections can go here.</Typography>
+
+      <Paper sx={{ p: 3, mb: 4 }}>
+        <Typography variant="body1">
+          {asset.description || "No description available."}
+        </Typography>
+      </Paper>
+
+      <Divider sx={{ my: 4 }} />
+
+      <ComponentList assetId={asset.id} />
     </Box>
   );
 };
 
-export default AssetDetail;
-<ComponentList />
+export default AssetDetails;

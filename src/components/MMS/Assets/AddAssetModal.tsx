@@ -1,4 +1,5 @@
-// MMS/Assets/AddAssetModal.tsx
+// src/components/MMS/Assets/AddAssetModal.tsx
+
 import React, { useState } from "react";
 import {
   Dialog,
@@ -13,78 +14,96 @@ import {
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "../../../firebase";
 
-interface AddAssetModalProps {
+interface Props {
   open: boolean;
   onClose: () => void;
-  onAdded: () => void;
+  onSaved: () => void;
 }
 
-const categories = ["Building", "Parking Lot", "Orchard", "Storage", "Other"];
+const CATEGORY_OPTIONS = [
+  "Buildings",
+  "Grounds",
+  "Fortifications",
+  "Grounds Trails",
+  "Presentations",
+  "Utilities",
+];
 
-const AddAssetModal: React.FC<AddAssetModalProps> = ({ open, onClose, onAdded }) => {
-  const [name, setName] = useState("");
-  const [assetNumber, setAssetNumber] = useState("");
-  const [category, setCategory] = useState("");
+const AddAssetModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
+  const [form, setForm] = useState({
+    assetId: "",
+    name: "",
+    category: "",
+    type: "",
+  });
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async () => {
-    if (!name || !assetNumber || !category) return;
-
-    await addDoc(collection(db, "assets"), {
-      name,
-      assetNumber,
-      category,
-      createdAt: new Date(),
-    });
-
-    setName("");
-    setAssetNumber("");
-    setCategory("");
-    onAdded();
-    onClose();
+    await addDoc(collection(db, "assets"), form);
+    onSaved();
+    setForm({ assetId: "", name: "", category: "", type: "" });
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Add New Asset</DialogTitle>
-      <DialogContent>
-        <Grid container spacing={2} {...({} as any)}>
-          <Grid item xs={12} {...({} as any)}>
+      <DialogContent dividers>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} {...({} as any)}>
+            <TextField
+              label="Asset ID"
+              name="assetId"
+              value={form.assetId}
+              onChange={handleChange}
+              fullWidth
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} {...({} as any)}>
             <TextField
               label="Asset Name"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
               fullWidth
-              value={name}
-              onChange={(e) => setName(e.target.value)}
             />
           </Grid>
-          <Grid item xs={12} {...({} as any)}>
-            <TextField
-              label="Asset Number"
-              fullWidth
-              value={assetNumber}
-              onChange={(e) => setAssetNumber(e.target.value)}
-            />
-          </Grid>
-          <Grid item xs={12} {...({} as any)}>
+          <Grid item xs={12} sm={6} {...({} as any)}>
             <TextField
               label="Category"
+              name="category"
               select
+              value={form.category}
+              onChange={handleChange}
               fullWidth
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
             >
-              {categories.map((cat) => (
+              {CATEGORY_OPTIONS.map((cat) => (
                 <MenuItem key={cat} value={cat}>
                   {cat}
                 </MenuItem>
               ))}
             </TextField>
           </Grid>
+          <Grid item xs={12} sm={6} {...({} as any)}>
+            <TextField
+              label="Type"
+              name="type"
+              value={form.type}
+              onChange={handleChange}
+              fullWidth
+            />
+          </Grid>
         </Grid>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSubmit}>
-          Add Asset
+        <Button onClick={handleSubmit} variant="contained">
+          Save
         </Button>
       </DialogActions>
     </Dialog>

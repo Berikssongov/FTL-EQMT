@@ -1,178 +1,95 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
-  Modal,
-  Box,
-  Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   TextField,
   Button,
-  Grid,
-  Paper,
   MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
-  SelectChangeEvent,
+  Stack,
 } from "@mui/material";
-import { collection, addDoc, getDocs } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../../firebase";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  onAdded?: () => void;
-  assetId?: string;
+  onSaved: () => void;
+  assetId: string;
 }
 
-const AddComponentModal: React.FC<Props> = ({ open, onClose, onAdded, assetId }) => {
-  const [form, setForm] = useState({
-    name: "",
-    type: "",
-    condition: "",
-    assetId: assetId || "",
-    notes: "",
-  });
-
-  const [assetOptions, setAssetOptions] = useState<{ id: string; name: string }[]>([]);
-
-  useEffect(() => {
-    const fetchAssets = async () => {
-      const snapshot = await getDocs(collection(db, "assets"));
-      const options = snapshot.docs.map(doc => ({
-        id: doc.id,
-        name: doc.data().name,
-      }));
-      setAssetOptions(options);
-    };
-
-    fetchAssets();
-  }, []);
-
-  useEffect(() => {
-    if (assetId) {
-      setForm((prev) => ({ ...prev, assetId }));
-    }
-  }, [assetId]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (e: SelectChangeEvent<string>) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name as string]: value }));
-  };
+const AddComponentModal: React.FC<Props> = ({ open, onClose, onSaved, assetId }) => {
+  const [name, setName] = useState("");
+  const [type, setType] = useState("");
+  const [location, setLocation] = useState("");
+  const [frequency, setFrequency] = useState("monthly");
 
   const handleSubmit = async () => {
-    if (!form.name || !form.type || !form.condition || !form.assetId) {
-      alert("Please fill in all required fields.");
-      return;
-    }
-
+    if (!name || !type) return;
     try {
       await addDoc(collection(db, "components"), {
-        ...form,
-        createdAt: new Date().toISOString(),
+        assetId,
+        name,
+        type,
+        location,
+        inspection: {
+          frequency,
+          lastChecked: null,
+          nextDue: null,
+          status: "pending",
+        },
+        createdAt: serverTimestamp(),
       });
-
-      if (onAdded) onAdded();
-
-      onClose();
-      setForm({ name: "", type: "", condition: "", assetId: "", notes: "" });
-    } catch (error) {
-      console.error("Failed to add component:", error);
-      alert("An error occurred while saving the component.");
+      onSaved();
+    } catch (err) {
+      console.error("Error adding component:", err);
     }
   };
 
   return (
-    <Modal open={open} onClose={onClose}>
-      <Box
-        sx={{
-          maxWidth: 600,
-          mx: "auto",
-          mt: 10,
-          bgcolor: "background.paper",
-          p: 4,
-          borderRadius: 2,
-          boxShadow: 3,
-        }}
-      >
-        <Typography variant="h6" gutterBottom fontWeight={600}>
-          Add New Component
-        </Typography>
-        <Paper sx={{ p: 2 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} {...({} as any)}>
-              <TextField
-                label="Component Name"
-                name="name"
-                value={form.name}
-                onChange={handleInputChange}
-                fullWidth
-              />
-            </Grid>
-
-            <Grid item xs={12} {...({} as any)}>
-              <TextField
-                label="Component Type"
-                name="type"
-                value={form.type}
-                onChange={handleInputChange}
-                fullWidth
-              />
-            </Grid>
-
-            <Grid item xs={12} {...({} as any)}>
-              <TextField
-                label="Condition"
-                name="condition"
-                value={form.condition}
-                onChange={handleInputChange}
-                fullWidth
-              />
-            </Grid>
-
-            <Grid item xs={12} {...({} as any)}>
-              <FormControl fullWidth>
-                <InputLabel id="asset-select-label">Linked Asset</InputLabel>
-                <Select
-                  labelId="asset-select-label"
-                  name="assetId"
-                  value={form.assetId}
-                  label="Linked Asset"
-                  onChange={handleSelectChange}
-                >
-                  {assetOptions.map((asset) => (
-                    <MenuItem key={asset.id} value={asset.id}>
-                      {asset.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} {...({} as any)}>
-              <TextField
-                label="Notes"
-                name="notes"
-                value={form.notes}
-                onChange={handleInputChange}
-                fullWidth
-                multiline
-                rows={3}
-              />
-            </Grid>
-
-            <Grid item xs={12} {...({} as any)}>
-              <Button variant="contained" fullWidth onClick={handleSubmit}>
-                Save Component
-              </Button>
-            </Grid>
-          </Grid>
-        </Paper>
-      </Box>
-    </Modal>
+    <Dialog open={open} onClose={onClose} fullWidth>
+      <DialogTitle>Add Component</DialogTitle>
+      <DialogContent>
+        <Stack spacing={2} sx={{ mt: 1 }}>
+          <TextField
+            label="Component Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+          <TextField
+            label="Type"
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            required
+          />
+          <TextField
+            label="Location (optional)"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+          />
+          <TextField
+            select
+            label="Inspection Frequency"
+            value={frequency}
+            onChange={(e) => setFrequency(e.target.value)}
+          >
+            {["daily", "weekly", "monthly", "quarterly", "yearly"].map((opt) => (
+              <MenuItem key={opt} value={opt}>
+                {opt.charAt(0).toUpperCase() + opt.slice(1)}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={handleSubmit} variant="contained">
+          Save
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 
