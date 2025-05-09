@@ -40,7 +40,7 @@ const PartDetail: React.FC = () => {
     }
   };
 
-  const canEdit = role === "admin" || role === "manager"; // ✅ NEW
+  const canEdit = role === "admin"
 
   if (loading) return <CircularProgress />;
   if (!part) return <Typography>Part record not found.</Typography>;

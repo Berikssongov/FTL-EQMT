@@ -14,6 +14,7 @@ import { format } from "date-fns";
 
 type Props = {
   assetId: string;
+  assetName: string;
 };
 
 type ComponentItem = {
@@ -88,7 +89,11 @@ const ComponentList: React.FC<Props> = ({ assetId }) => {
               }}
               onClick={() => navigate(`/components/${comp.id}`)}
             >
-              <Typography variant="subtitle1" fontWeight={500}>
+              <Typography
+                variant="subtitle1"
+                fontWeight={500}
+                color={comp.inspection?.status === "fail" ? "error" : "textPrimary"}
+              >
                 {comp.name}
               </Typography>
               <Typography variant="body2" color="textSecondary">

@@ -55,15 +55,16 @@ const AddComponentModal: React.FC<Props> = ({ open, onClose, onSaved, assetId })
   const [error, setError] = useState("");
 
   const exteriorCategories = ["Weather Envelope", "Structure", "Landscaping", "Other"];
-  const interiorCategories = ["Fixtures", "Finishes", "HVAC", "Electrical", "Plumbing", "Other"];
+  const interiorCategories = ["Electrical", "Finishes", "HVAC", "Electrical", "Plumbing", "Other"];
 
   const typeMap: Record<string, string[]> = {
-    "Weather Envelope": ["Roofing", "Siding", "Gutters"],
-    Structure: ["Decks", "Foundation", "Stairs"],
-    Landscaping: ["Grass", "Shrubs", "Irrigation"],
-    Fixtures: ["Lights", "Outlets"],
-    HVAC: ["Heater", "AC Unit"],
-    Plumbing: ["Toilet", "Sink"],
+    "Weather Envelope": ["Roofing", "Siding", "Gutters", "Flashing", "Fenestration"],
+    Structure: ["Decks", "Foundation", "Stairs", "Ramp"],
+    Landscaping: ["Sub-Surface Drainage", "Shrubs", "Plant Beds"],
+    Electrical: ["Lights", "Outlets", "Displays/Signs"],
+    HVAC: ["Heater", "AC Unit", "Vent/Fan"],
+    Plumbing: ["Toilet", "Sink", "Water Cooler"],
+    Other: ["Outlets", "Lighting", "Electrical Devices", "Spigot"]
   };
 
   const categoryOptions =
