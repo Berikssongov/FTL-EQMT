@@ -9,14 +9,14 @@ import {
   Button,
 } from "@mui/material";
 import { useParams, useNavigate } from "react-router-dom";
-import { doc, getDoc, updateDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../../firebase";
-import { format } from "date-fns";
 import { useRole } from "../../../contexts/RoleContext";
 
 import EditComponentModal from "./EditComponentModal";
-import AddInspectionForm from "../Inspections/AddInspectionForm";
-import InspectionLogTable from "../Inspections/InspectionLogTable";
+import FindingList from "../Inspections/FindingList";
+import RoutineMaintenanceList from "../Inspections/RoutineMaintenanceList";
+import InspectionSubmission from "../Inspections/InspectionSubmission";
 
 type ComponentData = {
   id: string;
@@ -41,37 +41,28 @@ const ComponentDetail: React.FC = () => {
   const [component, setComponent] = useState<ComponentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
-  const [inspectionRefreshTrigger, setInspectionRefreshTrigger] = useState<string>("");
+  const [refreshKey, setRefreshKey] = useState(0); // 🔑 Added
   const navigate = useNavigate();
   const { role, loading: roleLoading } = useRole();
 
   const fetchComponent = async () => {
     if (!id) return;
 
-    console.log("🚀 Fetching component data with ID:", id);
-
     try {
       const ref = doc(db, "components", id);
       const snap = await getDoc(ref);
 
-      console.log("📦 Component data fetched:", snap.exists() ? snap.data() : "No data found");
-
       if (snap.exists()) {
         const componentData = { id: snap.id, ...snap.data() } as ComponentData;
 
-        // Fetch the asset data based on assetId
         const assetRef = doc(db, "assets", componentData.assetId);
         const assetSnap = await getDoc(assetRef);
         if (assetSnap.exists()) {
           const assetData = assetSnap.data();
-          componentData.assetName = assetData?.name; // Add assetName to componentData
-        } else {
-          console.error("⚠️ Asset not found");
+          componentData.assetName = assetData?.name;
         }
 
         setComponent(componentData);
-      } else {
-        console.error("⚠️ Component not found");
       }
     } catch (err) {
       console.error("❌ Failed to load component:", err);
@@ -115,10 +106,8 @@ const ComponentDetail: React.FC = () => {
     );
   }
 
-  console.log("Component Data:", component); // Log for debugging
-
   return (
-    <Box sx={{ maxWidth: 800, mx: "auto", py: 4 }}>
+    <Box sx={{ maxWidth: 1000, mx: "auto", py: 4 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
         <Button variant="outlined" onClick={() => navigate(-1)}>
           ← Back
@@ -154,44 +143,42 @@ const ComponentDetail: React.FC = () => {
             <Chip key={i} label={tag} />
           ))}
         </Box>
-
-        <Divider sx={{ my: 2 }} />
-
-        <Typography variant="subtitle2" gutterBottom>
-          Inspection Info
-        </Typography>
-        <Typography variant="body2">Frequency: {component.inspection.frequency}</Typography>
-        <Typography variant="body2">
-          Last Checked:{" "}
-          {component.inspection.lastChecked
-            ? format(new Date(component.inspection.lastChecked), "yyyy-MM-dd")
-            : "Not checked"}
-        </Typography>
-        <Typography variant="body2">
-          Next Due:{" "}
-          {component.inspection.nextDue
-            ? format(new Date(component.inspection.nextDue), "yyyy-MM-dd")
-            : "Not scheduled"}
-        </Typography>
-        <Typography variant="body2">Status: {component.inspection.status}</Typography>
       </Paper>
 
-      {/* Inspection Form and Log Table */}
-      <AddInspectionForm
-        componentId={component.id}
-        componentName={component.name}
-        assetId={component.assetId}
-        assetName={component.assetName} // Ensure assetName is available here
-        currentFrequency={component.inspection.frequency}
-        onSaved={() => setInspectionRefreshTrigger(Date.now().toString())}
-      />
+      <Divider sx={{ my: 4 }} />
 
-      <InspectionLogTable
-        componentId={component.id}
-        refreshTrigger={inspectionRefreshTrigger}
-      />
+      {role !== "guest" && (
+        <Paper sx={{ p: 3, mb: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            Findings & Observations
+          </Typography>
+          <FindingList componentId={component.id} refreshKey={refreshKey} />
+        </Paper>
+      )}
 
-      {/* 🛠️ Edit Modal */}
+      {role !== "guest" && (
+        <Paper sx={{ p: 3, mb: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            Routine Maintenance
+          </Typography>
+          <RoutineMaintenanceList componentId={component.id} />
+        </Paper>
+      )}
+
+      {(role === "admin" || role === "manager") && (
+        <Paper sx={{ p: 3, mb: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            Submit New Finding or Maintenance Record
+          </Typography>
+          <InspectionSubmission
+            componentId={component.id}
+            assetId={component.assetId}
+            assetName={component.assetName}
+            onSubmitSuccess={() => setRefreshKey((prev) => prev + 1)} // 🔑 Added
+          />
+        </Paper>
+      )}
+
       {role === "admin" && component && (
         <EditComponentModal
           open={editOpen}
