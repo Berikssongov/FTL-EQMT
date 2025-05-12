@@ -7,24 +7,22 @@ import {
   Divider,
   CircularProgress,
   List,
-  ListItem,
   ListItemText,
-  ListItemButton, // Import ListItemButton
+  ListItemButton,
 } from "@mui/material";
 import { useParams, useNavigate } from "react-router-dom";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "../../../firebase";
 import ComponentList from "../Components/ComponentList";
-import { Timestamp } from "firebase/firestore"; // Import Timestamp from Firebase
 
 interface Inspection {
   id: string;
   componentName: string;
   assetName: string;
-  timestamp: Timestamp | null; // Allow timestamp to be null
+  date: Timestamp | null;
   status: string;
-  notes: string; // Added field to store inspection notes
-  componentId: string; // Assuming we have this to navigate to the component
+  notes: string;
+  componentId: string;
 }
 
 type Asset = {
@@ -50,33 +48,39 @@ const AssetDetail: React.FC = () => {
       try {
         const assetRef = doc(db, "assets", id);
         const assetSnap = await getDoc(assetRef);
-    
+
         if (assetSnap.exists()) {
           const assetData = { id: assetSnap.id, ...assetSnap.data() } as Asset;
           setAsset(assetData);
-    
+
           const inspectionsRef = collection(db, "componentInspections");
-          const q = query(
-            inspectionsRef,
-            where("assetId", "==", assetData.id),
-            where("status", "==", "fail")
-          );
+          const q = query(inspectionsRef, where("assetId", "==", assetData.id));
           const snapshot = await getDocs(q);
-    
-          const failed = snapshot.docs.map(doc => {
+
+          const inspections = snapshot.docs.map(doc => {
             const data = doc.data();
-            console.log("Fetched inspection data:", data); // Log the fetched data
-    
             return {
               id: doc.id,
               ...data,
-              timestamp: data.timestamp ?? null, // Handle timestamp correctly
-              notes: data.notes, // Store the notes
-              componentId: data.componentId, // Store the component ID
-            };
-          }) as Inspection[];
-    
-          failed.sort((a, b) => (b.timestamp?.seconds ?? 0) - (a.timestamp?.seconds ?? 0));
+              date: data.date ?? null,
+            } as Inspection;
+          });
+
+          // Keep only the most recent inspection per component
+          const latestInspectionsMap = new Map<string, Inspection>();
+          inspections.forEach((insp) => {
+            const existing = latestInspectionsMap.get(insp.componentId);
+            if (!existing || (insp.date?.seconds ?? 0) > (existing.date?.seconds ?? 0)) {
+              latestInspectionsMap.set(insp.componentId, insp);
+            }
+          });
+
+          // Keep only failed inspections
+          const failed = Array.from(latestInspectionsMap.values()).filter(
+            (insp) => insp.status === "fail"
+          );
+
+          failed.sort((a, b) => (b.date?.seconds ?? 0) - (a.date?.seconds ?? 0));
           setFailedInspections(failed);
         }
       } catch (error) {
@@ -85,7 +89,7 @@ const AssetDetail: React.FC = () => {
         setLoading(false);
       }
     };
-    
+
     fetchAssetAndInspections();
   }, [id]);
 
@@ -147,16 +151,16 @@ const AssetDetail: React.FC = () => {
               {failedInspections.map((inspection) => (
                 <ListItemButton
                   key={inspection.id}
-                  onClick={() => navigate(`/components/${inspection.componentId}`)} // Navigate to the component details
+                  onClick={() => navigate(`/components/${inspection.componentId}`)}
                 >
                   <ListItemText
                     primary={`${inspection.assetName} - ${inspection.componentName}`}
                     secondary={
                       <>
-                        <span>{inspection.notes}</span> {/* Replace div with span */}
+                        <span>{inspection.notes}</span><br />
                         <span>
-                          {inspection.timestamp
-                            ? new Date(inspection.timestamp.seconds * 1000).toLocaleString() // Convert timestamp to date
+                          {inspection.date
+                            ? new Date(inspection.date.seconds * 1000).toLocaleString()
                             : "No date available"}
                         </span>
                       </>

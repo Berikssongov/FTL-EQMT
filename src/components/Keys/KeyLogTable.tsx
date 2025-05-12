@@ -1,5 +1,3 @@
-// src/components/Keys/KeyLogTable.tsx
-
 import React from "react";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { Paper, Typography } from "@mui/material";
@@ -11,6 +9,7 @@ export interface KeyLogEntry {
   keyName: string;
   person: string;
   lockbox: string;
+  submittedBy: string; // NEW: Added Submitted By field
 }
 
 interface Props {
@@ -23,6 +22,7 @@ const columns: GridColDef[] = [
   { field: "keyName", headerName: "Key", flex: 1 },
   { field: "person", headerName: "Person", flex: 1 },
   { field: "lockbox", headerName: "Location", flex: 1 },
+  { field: "submittedBy", headerName: "Submitted By", flex: 1 }, // NEW: Column for Submitted By
 ];
 
 const KeyLogTable: React.FC<Props> = ({ rows }) => (

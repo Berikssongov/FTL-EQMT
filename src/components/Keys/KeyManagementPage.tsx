@@ -16,6 +16,7 @@ import KeyFormPanel from "./KeyFormPanel";
 import KeySearchPanel from "./KeySearchPanel";
 import KeyLogTable from "./KeyLogTable";
 import { useRole } from "../../contexts/RoleContext"; // ✅ NEW
+import { useAuth } from "../../contexts/AuthContext";
 
 interface KeyLogEntry {
   id: string;
@@ -24,17 +25,20 @@ interface KeyLogEntry {
   person: string;
   lockbox: string;
   date: string;
+  submittedBy: string; // Add this field to match the KeyLogTable type
 }
 
 const KeyManagementPage: React.FC = () => {
   const { role } = useRole(); // ✅ NEW
   const [logs, setLogs] = useState<KeyLogEntry[]>([]);
+  const { user } = useAuth(); // Updated to match the context
+
 
   useEffect(() => {
     const fetchLogs = async () => {
       const ref = collection(db, "keyLogs");
       const snapshot = await getDocs(query(ref, orderBy("timestamp", "desc")));
-
+    
       const formatted = snapshot.docs.map((doc) => {
         const data = doc.data();
         return {
@@ -44,11 +48,13 @@ const KeyManagementPage: React.FC = () => {
           person: data.person,
           lockbox: data.lockbox,
           date: new Date(data.timestamp).toLocaleString(),
+          submittedBy: data.submittedBy || user?.displayName || "Unknown", // Use the logged-in user's name
         };
       });
-
+    
       setLogs(formatted);
     };
+    
 
     fetchLogs();
   }, []);

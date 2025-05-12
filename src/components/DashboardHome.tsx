@@ -9,8 +9,11 @@ import {
   List,
   ListItem,
   ListItemText,
+  CircularProgress,
+  ListItemButton,
 } from "@mui/material";
 import { collection, getDocs } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 import { db } from "../firebase";
 
 import TaskList from "./Tasks/TaskList";
@@ -20,6 +23,16 @@ interface Equipment {
   name: string;
   condition: string;
   createdAt?: any;
+}
+
+interface Inspection {
+  id: string;
+  componentName: string;
+  assetName: string;
+  timestamp: any;
+  status: string;
+  notes: string;
+  componentId: string;
 }
 
 const StatCard = ({ title, value }: { title: string; value: number | string }) => (
@@ -35,12 +48,16 @@ const StatCard = ({ title, value }: { title: string; value: number | string }) =
   </Card>
 );
 
+// ...imports remain unchanged...
+
 const DashboardHome: React.FC = () => {
   const [assignedKeysCount, setAssignedKeysCount] = useState<number>(0);
   const [lockboxKeysCount, setLockboxKeysCount] = useState<number>(0);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [handToolCount, setHandToolCount] = useState<number>(0);
   const [powerToolCount, setPowerToolCount] = useState<number>(0);
+  const [failedInspections, setFailedInspections] = useState<Inspection[] | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -60,21 +77,40 @@ const DashboardHome: React.FC = () => {
       setPowerToolCount(powerToolsSnap.size);
     };
 
+    const fetchFailedInspections = async () => {
+      const allInspectionsSnap = await getDocs(collection(db, "componentInspections"));
+      const allInspections = allInspectionsSnap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Inspection[];
+
+      const latestByComponent = new Map<string, Inspection>();
+
+      for (const inspection of allInspections) {
+        const current = latestByComponent.get(inspection.componentId);
+        const currentTime = current?.timestamp?.seconds ?? 0;
+        const newTime = inspection.timestamp?.seconds ?? 0;
+
+        if (!current || newTime > currentTime) {
+          latestByComponent.set(inspection.componentId, inspection);
+        }
+      }
+
+      const failed = Array.from(latestByComponent.values()).filter(
+        (i) => i.status === "fail"
+      );
+      failed.sort((a, b) => (b.timestamp?.seconds ?? 0) - (a.timestamp?.seconds ?? 0));
+      setFailedInspections(failed);
+    };
+
     fetchData();
+    fetchFailedInspections();
   }, []);
 
   const brokenEquipment = equipment.filter(e =>
     e.condition?.toLowerCase().includes("broken") ||
     e.condition?.toLowerCase().includes("out of service")
   );
-
-  const recentEquipment = [...equipment]
-    .sort((a, b) => {
-      const aDate = a.createdAt?.seconds ?? 0;
-      const bDate = b.createdAt?.seconds ?? 0;
-      return bDate - aDate;
-    })
-    .slice(0, 5);
 
   return (
     <Box sx={{ px: 4, py: 3 }}>
@@ -83,23 +119,9 @@ const DashboardHome: React.FC = () => {
       </Typography>
 
       <Grid container spacing={4}>
-        {/* LEFT: Task List */}
-        <Grid item xs={12} md={4} {...({} as any)}>
-          <Card elevation={2}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Ongoing Tasks & Priorities
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              <TaskList listStyle />
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* RIGHT: Dashboard Stats and Widgets */}
-        <Grid item xs={12} md={8} {...({} as any)}>
-          {/* Stat Cards */}
-          <Grid container spacing={2} mb={4}>
+        {/* Stat Cards Row */}
+        <Grid item xs={12} {...({} as any)}>
+          <Grid container spacing={2}>
             <Grid item xs={6} sm={4} {...({} as any)}>
               <StatCard title="Assigned Keys" value={assignedKeysCount} />
             </Grid>
@@ -119,9 +141,13 @@ const DashboardHome: React.FC = () => {
               <StatCard title="Power Tools" value={powerToolCount} />
             </Grid>
           </Grid>
+        </Grid>
 
-          <Grid container spacing={4}>
-            <Grid item xs={12} sm={6} {...({} as any)}>
+        {/* Three Column Layout for Detailed Boxes */}
+        <Grid item xs={12} {...({} as any)}>
+          <Grid container spacing={4} {...({} as any)}>
+            {/* Out of Service Equipment */}
+            <Grid item xs={12} md={4} {...({} as any)}>
               <Card elevation={2}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -134,7 +160,7 @@ const DashboardHome: React.FC = () => {
                     </Typography>
                   ) : (
                     <List dense>
-                      {brokenEquipment.slice(0, 5).map((item) => (
+                      {brokenEquipment.map((item) => (
                         <ListItem key={item.id} disablePadding>
                           <ListItemText
                             primary={item.name}
@@ -148,29 +174,60 @@ const DashboardHome: React.FC = () => {
               </Card>
             </Grid>
 
-            <Grid item xs={12} sm={6} {...({} as any)}>
+            {/* Failed Inspections */}
+            <Grid item xs={12} md={4} {...({} as any)}>
               <Card elevation={2}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
-                    Recently Added Equipment
+                    Failed Inspections
                   </Typography>
                   <Divider sx={{ mb: 1 }} />
-                  {recentEquipment.length === 0 ? (
+                  {failedInspections === null ? (
+                    <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+                      <CircularProgress />
+                    </Box>
+                  ) : failedInspections.length === 0 ? (
                     <Typography variant="body2" color="text.secondary">
-                      No new equipment added recently.
+                      No failed inspections.
                     </Typography>
                   ) : (
                     <List dense>
-                      {recentEquipment.map((item) => (
-                        <ListItem key={item.id} disablePadding>
+                      {failedInspections.map((inspection) => (
+                        <ListItemButton
+                          key={inspection.id}
+                          onClick={() => navigate(`/components/${inspection.componentId}`)}
+                        >
                           <ListItemText
-                            primary={item.name}
-                            secondary={`Condition: ${item.condition}`}
+                            primary={`${inspection.assetName} – ${inspection.componentName}`}
+                            secondary={
+                              <>
+                                <span>{inspection.notes}</span>
+                                <br />
+                                <span>
+                                  {inspection.timestamp
+                                    ? new Date(inspection.timestamp.seconds * 1000).toLocaleString()
+                                    : "No date"}
+                                </span>
+                              </>
+                            }
                           />
-                        </ListItem>
+                        </ListItemButton>
                       ))}
                     </List>
                   )}
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Ongoing Tasks */}
+            <Grid item xs={12} md={4} {...({} as any)}>
+              <Card elevation={2}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    Ongoing Tasks & Priorities
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                  <TaskList listStyle />
                 </CardContent>
               </Card>
             </Grid>
@@ -182,3 +239,4 @@ const DashboardHome: React.FC = () => {
 };
 
 export default DashboardHome;
+

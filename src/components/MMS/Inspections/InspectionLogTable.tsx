@@ -1,5 +1,3 @@
-// src/components/MMS/Inspections/InspectionLogTable.tsx
-
 import React, { useEffect, useState } from "react";
 import {
   Paper,
@@ -32,29 +30,24 @@ const InspectionLogTable: React.FC<Props> = ({ componentId, refreshTrigger }) =>
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-
-
   const fetchLogs = async () => {
     setLoading(true);
-  
-    // Log before making the Firestore query
+
     console.log("🚀 Fetching inspection logs for component ID:", componentId);
-  
+
     try {
       const ref = collection(db, "componentInspections");
       const q = query(ref, where("componentId", "==", componentId));
-  
-      // Log the query and its result
+
       console.log("📦 Firestore query executed:", q);
-  
+
       const snap = await getDocs(q);
       console.log("📄 Logs fetched:", snap.docs.length, "documents found.");
-  
+
       const list = snap.docs.map(doc => doc.data() as LogEntry);
       list.sort((a, b) => b.date.seconds - a.date.seconds);
       setLogs(list);
     } catch (err) {
-      // Log any error that occurs
       console.error("❌ Failed to fetch logs:", err);
     } finally {
       setLoading(false);
@@ -64,7 +57,6 @@ const InspectionLogTable: React.FC<Props> = ({ componentId, refreshTrigger }) =>
   useEffect(() => {
     fetchLogs();
   }, [componentId, refreshTrigger]);
-  
 
   return (
     <Paper sx={{ mt: 4, p: 3 }}>
@@ -93,7 +85,11 @@ const InspectionLogTable: React.FC<Props> = ({ componentId, refreshTrigger }) =>
           <TableBody>
             {logs.map((log, index) => (
               <TableRow key={index}>
-                <TableCell>{format(new Date(log.date.seconds * 1000), "yyyy-MM-dd")}</TableCell>
+                <TableCell>
+                  {log.date?.seconds
+                    ? format(new Date(log.date.seconds * 1000), "yyyy-MM-dd")
+                    : "-"}
+                </TableCell>
                 <TableCell>{log.inspector}</TableCell>
                 <TableCell>{log.status}</TableCell>
                 <TableCell>{log.notes}</TableCell>

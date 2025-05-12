@@ -14,6 +14,8 @@ import { addEquipment } from "../services/equipmentServices";
 import { fetchLocations } from "../services/locationsService";
 import { useRole } from "../contexts/RoleContext"; // ✅ Added
 
+import { isRole } from "../contexts/RoleContext";
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -74,7 +76,7 @@ const AddEquipmentModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
   };
 
   const handleSubmit = async () => {
-    if (roleLoading || role !== "admin") return;
+    if (roleLoading || !isRole("admin", role)) return;
     setSubmitting(true);
     await addEquipment(form);
     setSubmitting(false);
@@ -83,7 +85,7 @@ const AddEquipmentModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
   };
 
   if (roleLoading) return null;
-  if (role !== "admin") return null;
+  if (!isRole("admin", role)) return null;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>

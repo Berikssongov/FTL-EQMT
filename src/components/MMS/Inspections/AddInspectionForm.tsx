@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../../firebase";
 import { useRole } from "../../../contexts/RoleContext";
+import { useAuth } from "../../../contexts/AuthContext";  // Importing useAuth to access user info
 
 interface Props {
   componentId: string;
@@ -41,6 +42,7 @@ const AddInspectionForm: React.FC<Props> = ({
   const [saving, setSaving] = useState(false);
 
   const { role, loading: roleLoading } = useRole();
+  const { firstName, lastName } = useAuth();  // Accessing firstName and lastName from AuthContext
 
   // If the role data is still loading, show a loading spinner
   if (roleLoading) return <CircularProgress />;
@@ -57,6 +59,21 @@ const AddInspectionForm: React.FC<Props> = ({
     );
   }
 
+  // Check if user information is available
+  if (!firstName || !lastName) {
+    console.warn("⛔ User information not found!");
+    return (
+      <Paper sx={{ p: 3, mt: 3 }}>
+        <Typography variant="body2" color="error">
+          Unable to retrieve your user information.
+        </Typography>
+      </Paper>
+    );
+  }
+
+  // Combine firstName and lastName to create the full inspector name
+  const inspectorName = `${firstName} ${lastName}`;
+
   const calculateNextDue = (frequency: string): string => {
     const now = new Date();
     const base = new Date(now);
@@ -72,7 +89,7 @@ const AddInspectionForm: React.FC<Props> = ({
   };
 
   const handleSubmit = async () => {
-    if (!inspector || !notes) {
+    if (!inspectorName || !notes) {
       console.warn("⛔ Missing required fields");
       return;
     }
@@ -83,7 +100,7 @@ const AddInspectionForm: React.FC<Props> = ({
     }
   
     console.log("🟢 Submitting inspection...");
-    console.log("📦 Data:", { inspector, notes, status, assetName });
+    console.log("📦 Data:", { inspectorName, notes, status, assetName });
   
     setSaving(true);
     try {
@@ -96,7 +113,7 @@ const AddInspectionForm: React.FC<Props> = ({
         componentName,
         assetId,
         assetName, // Automatically included
-        inspector,
+        inspector: inspectorName,  // Use the full name of the inspector
         notes,
         status,
         date: serverTimestamp(),
@@ -112,7 +129,6 @@ const AddInspectionForm: React.FC<Props> = ({
         },
       });
   
-      setInspector("");
       setNotes("");
       setStatus("pass");
       onSaved();
@@ -123,7 +139,6 @@ const AddInspectionForm: React.FC<Props> = ({
       setSaving(false);
     }
   };
-  
 
   return (
     <Paper sx={{ p: 3, mt: 3 }}>
@@ -131,12 +146,7 @@ const AddInspectionForm: React.FC<Props> = ({
         Mark Inspection as Done
       </Typography>
       <Stack spacing={2}>
-        <TextField
-          label="Inspector Name"
-          value={inspector}
-          onChange={(e) => setInspector(e.target.value)}
-          size="small"
-        />
+        {/* Remove the Inspector Name field */}
         <TextField
           label="Notes"
           value={notes}

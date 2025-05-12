@@ -8,6 +8,8 @@ import { useNavigate } from "react-router-dom";
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -22,6 +24,8 @@ const LoginPage: React.FC = () => {
         await setDoc(doc(db, "users", userCred.user.uid), {
           email,
           role: "user",
+          firstName,
+          lastName,
         });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
@@ -39,6 +43,26 @@ const LoginPage: React.FC = () => {
           {isSignUp ? "Sign Up" : "Login"}
         </Typography>
         <form onSubmit={handleSubmit}>
+          {isSignUp && (
+            <>
+              <TextField
+                label="First Name"
+                fullWidth
+                margin="normal"
+                value={firstName}
+                onChange={e => setFirstName(e.target.value)}
+                required
+              />
+              <TextField
+                label="Last Name"
+                fullWidth
+                margin="normal"
+                value={lastName}
+                onChange={e => setLastName(e.target.value)}
+                required
+              />
+            </>
+          )}
           <TextField
             label="Email"
             fullWidth

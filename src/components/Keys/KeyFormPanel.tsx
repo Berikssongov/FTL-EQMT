@@ -20,7 +20,8 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { db } from "../../firebase";
-import { useRole } from "../../contexts/RoleContext"; // ✅ NEW
+import { useRole } from "../../contexts/RoleContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface RestrictedKey {
   id: string;
@@ -46,9 +47,10 @@ interface NonRestrictedKey {
 type KeyData = RestrictedKey | NonRestrictedKey;
 
 const KeyFormPanel: React.FC = () => {
-  const { role } = useRole(); // ✅ NEW
+  const { role } = useRole();
+  const { user, firstName, lastName } = useAuth();
 
-  if (role !== "manager" && role !== "admin") return null; // ✅ Hide if not allowed
+  if (role !== "manager" && role !== "admin") return null;
 
   const [keys, setKeys] = useState<KeyData[]>([]);
   const [keyName, setKeyName] = useState("");
@@ -86,7 +88,7 @@ const KeyFormPanel: React.FC = () => {
       return;
     }
 
-    const isBypass = person.trim().toLowerCase() === "created" && role === "admin"; // ✅ NEW: Admin-only bypass
+    const isBypass = person.trim().toLowerCase() === "created" && role === "admin";
 
     if (!matchingKey) {
       const newData = isRestricted
@@ -193,11 +195,18 @@ const KeyFormPanel: React.FC = () => {
       await updateDoc(keyRef, { holders });
     }
 
+    const submittedBy = firstName && lastName
+      ? `${firstName} ${lastName}`
+      : user?.email || user?.uid || "Unknown User";
+
+    console.log("Logging key action by:", submittedBy);
+
     await addDoc(collection(db, "keyLogs"), {
       keyName: keyName.trim(),
       action,
       person: person.trim(),
       lockbox: finalLockbox,
+      submittedBy,
       timestamp: new Date().toISOString(),
     });
 
