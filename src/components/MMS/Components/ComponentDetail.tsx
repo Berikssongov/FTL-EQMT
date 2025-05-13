@@ -365,13 +365,35 @@ const ComponentDetail: React.FC = () => {
       <Typography variant="body2" sx={{ mb: 2 }}>
         These findings were reported during the last failed inspection.
       </Typography>
-      <ul>
-        {(component.inspection.findings as string[]).map((finding, idx) => (
-          <li key={idx}>
-            <Typography variant="body1">{finding}</Typography>
-          </li>
-        ))}
-      </ul>
+      <Box>
+  {(component.inspection.findings as string[]).map((finding, idx) => (
+    <Paper
+      key={idx}
+      elevation={1}
+      sx={{
+        p: 2,
+        mb: 1,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        cursor: "pointer",
+        transition: "0.2s",
+        "&:hover": {
+          backgroundColor: "#f5f5f5",
+        },
+      }}
+      onClick={() => {
+        // Placeholder for future logic (e.g., open modal with details)
+        console.log(`Clicked finding #${idx + 1}:`, finding);
+      }}
+    >
+      <Typography variant="body1">
+        {idx + 1}. {finding}
+      </Typography>
+    </Paper>
+  ))}
+</Box>
+
       <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
         Last Checked:{" "}
         {component.inspection.lastChecked
