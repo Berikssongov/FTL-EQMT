@@ -267,11 +267,20 @@ const ComponentDetail: React.FC = () => {
             </Box>
           )}
 
-          {inspectionStatus === "yes" && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle2">Inspection Result: Passed</Typography>
-            </Box>
-          )}
+{inspectionStatus === "yes" && (
+  <Box sx={{ mt: 2 }}>
+    <Typography variant="subtitle2" sx={{ mb: 2 }}>
+      This inspection will be submitted as <strong>PASSED</strong>.
+    </Typography>
+    <Button
+      variant="contained"
+      color="success"
+      onClick={() => handleInspectionSubmit("yes")}
+    >
+      Submit Passed Inspection
+    </Button>
+  </Box>
+)}
 
 {inspectionStatus === "no" && (
   <Box sx={{ mt: 2 }}>
