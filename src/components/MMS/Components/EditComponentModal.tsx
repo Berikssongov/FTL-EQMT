@@ -15,7 +15,7 @@ import {
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSave: (updatedData: Partial<ComponentData>) => void;
+  onSave: (updatedData: Partial<ComponentData>) => void | Promise<void>;
   component: ComponentData;
 }
 
@@ -33,6 +33,7 @@ type ComponentData = {
     lastChecked: string | null;
     nextDue: string | null;
     status: string;
+    findings: string | string[]; // optional in case this modal doesn't manage it
   };
 };
 

@@ -7,6 +7,7 @@ import {
   Chip,
   Divider,
   Button,
+  TextField,
 } from "@mui/material";
 import { useParams, useNavigate } from "react-router-dom";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
@@ -14,9 +15,6 @@ import { db } from "../../../firebase";
 import { useRole } from "../../../contexts/RoleContext";
 
 import EditComponentModal from "./EditComponentModal";
-import FindingList from "../Inspections/FindingList";
-import RoutineMaintenanceList from "../Inspections/RoutineMaintenanceList";
-import InspectionSubmission from "../Inspections/InspectionSubmission";
 
 type ComponentData = {
   id: string;
@@ -33,6 +31,7 @@ type ComponentData = {
     lastChecked: string | null;
     nextDue: string | null;
     status: string;
+    findings: string | string[]; // Update to handle both types
   };
 };
 
@@ -41,7 +40,10 @@ const ComponentDetail: React.FC = () => {
   const [component, setComponent] = useState<ComponentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0); // 🔑 Added
+  const [inspectionStatus, setInspectionStatus] = useState<string | null>(null);
+  const [currentFinding, setCurrentFinding] = useState("");
+  const [findings, setFindings] = useState<string[]>([]);
+  const [addingFinding, setAddingFinding] = useState(false);
   const navigate = useNavigate();
   const { role, loading: roleLoading } = useRole();
 
@@ -54,6 +56,11 @@ const ComponentDetail: React.FC = () => {
 
       if (snap.exists()) {
         const componentData = { id: snap.id, ...snap.data() } as ComponentData;
+
+        if (componentData.inspection.nextDue) {
+          const nextDueDate = new Date(componentData.inspection.nextDue).toISOString();
+          componentData.inspection.nextDue = nextDueDate;
+        }
 
         const assetRef = doc(db, "assets", componentData.assetId);
         const assetSnap = await getDoc(assetRef);
@@ -85,6 +92,69 @@ const ComponentDetail: React.FC = () => {
     } catch (err) {
       console.error("Failed to update component", err);
     }
+  };
+
+  const handleInspectionSubmit = async (status: string) => {
+    if (!id || !component || (role !== "admin" && role !== "manager")) {
+      console.log("❌ You do not have permission to submit this inspection.");
+      return;
+    }
+
+    // Calculate the new next due date based on the frequency
+    const now = new Date();
+    const newNextDue = new Date(now); // clone current date
+    const freq = component.inspection.frequency.toLowerCase();
+
+    switch (freq) {
+      case "monthly":
+        newNextDue.setMonth(newNextDue.getMonth() + 1);
+        break;
+      case "quarterly":
+        newNextDue.setMonth(newNextDue.getMonth() + 3);
+        break;
+      case "semi-annually":
+      case "biannually":
+        newNextDue.setMonth(newNextDue.getMonth() + 6);
+        break;
+      case "yearly":
+      case "annually":
+        newNextDue.setFullYear(newNextDue.getFullYear() + 1);
+        break;
+      default:
+        // if unknown or not set, leave nextDue unchanged or set to null
+        console.warn("⚠️ Unknown frequency:", freq);
+        break;
+    }
+
+    const updatedInspection = {
+      ...component.inspection,
+      status,
+      lastChecked: now.toISOString(),
+      nextDue: isNaN(newNextDue.getTime()) ? null : newNextDue.toISOString(),
+      findings: status === "no" ? findings : [],
+    };
+
+    await handleUpdate({
+      inspection: updatedInspection,
+    });
+
+    // Reset state
+    setInspectionStatus(null);
+    setFindings([]);
+    setCurrentFinding("");
+    setAddingFinding(false);
+  };
+
+  const isInspectionDue = (nextDue: string | null): boolean => {
+    if (!nextDue || nextDue === "Not set") return true;
+    const currentDate = new Date();
+    const dueDate = new Date(nextDue);
+    if (isNaN(dueDate.getTime())) return false;
+
+    const timeDiff = dueDate.getTime() - currentDate.getTime();
+    const fourteenDays = 1000 * 60 * 60 * 24 * 14;
+
+    return dueDate <= currentDate || timeDiff <= fourteenDays;
   };
 
   if (loading || roleLoading) {
@@ -147,46 +217,179 @@ const ComponentDetail: React.FC = () => {
 
       <Divider sx={{ my: 4 }} />
 
-      {role !== "guest" && (
+      {role !== "guest" && component.inspection?.frequency && (
         <Paper sx={{ p: 3, mb: 4 }}>
           <Typography variant="h6" gutterBottom>
-            Findings & Observations
+            Inspection Frequency & Next Due
           </Typography>
-          <FindingList componentId={component.id} refreshKey={refreshKey} />
-        </Paper>
-      )}
-
-      {role !== "guest" && (
-        <Paper sx={{ p: 3, mb: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            Routine Maintenance
+          <Typography>
+            Frequency: {component.inspection.frequency}
           </Typography>
-          <RoutineMaintenanceList componentId={component.id} />
-        </Paper>
-      )}
-
-      {(role === "admin" || role === "manager") && (
-        <Paper sx={{ p: 3, mb: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            Submit New Finding or Maintenance Record
+          <Typography>
+            Next Due: {component.inspection.nextDue || "Not set"}
           </Typography>
-          <InspectionSubmission
-            componentId={component.id}
-            assetId={component.assetId}
-            assetName={component.assetName}
-            onSubmitSuccess={() => setRefreshKey((prev) => prev + 1)} // 🔑 Added
-          />
-        </Paper>
-      )}
 
-      {role === "admin" && component && (
-        <EditComponentModal
-          open={editOpen}
-          onClose={() => setEditOpen(false)}
-          component={component}
-          onSave={handleUpdate}
+          {isInspectionDue(component.inspection.nextDue) && inspectionStatus === null && (
+            <Box sx={{ mt: 2 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => setInspectionStatus("pending")}
+              >
+                Inspect
+              </Button>
+            </Box>
+          )}
+
+          {inspectionStatus === "pending" && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                Did the component pass inspection?
+              </Typography>
+              <Button
+                variant="contained"
+                color="success"
+                onClick={() => setInspectionStatus("yes")}
+                sx={{ mr: 2 }}
+              >
+                Yes
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={() => {
+                  setInspectionStatus("no");
+                  setAddingFinding(true);
+                }}
+              >
+                No
+              </Button>
+            </Box>
+          )}
+
+          {inspectionStatus === "yes" && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2">Inspection Result: Passed</Typography>
+            </Box>
+          )}
+
+{inspectionStatus === "no" && (
+  <Box sx={{ mt: 2 }}>
+    <Typography variant="subtitle2">Please add findings:</Typography>
+
+    {addingFinding && (
+      <>
+        <TextField
+          fullWidth
+          variant="outlined"
+          label="Finding"
+          value={currentFinding}
+          onChange={(e) => setCurrentFinding(e.target.value)}
+          sx={{ mb: 2 }}
         />
+        <Button
+          variant="contained"
+          onClick={() => {
+            if (currentFinding.trim()) {
+              setFindings([...findings, currentFinding.trim()]);
+              setCurrentFinding("");
+              setAddingFinding(false);
+            }
+          }}
+          sx={{ mb: 2 }}
+        >
+          Add Finding
+        </Button>
+      </>
+    )}
+
+    {!addingFinding && (
+      <>
+        {findings.length > 0 && (
+          <>
+            <Typography variant="subtitle2">Findings:</Typography>
+            <ul>
+              {findings.map((finding, idx) => (
+                <li key={idx}>{finding}</li>
+              ))}
+            </ul>
+
+            <Box sx={{ mt: 2 }}>
+              <Button
+                variant="outlined"
+                onClick={() => setAddingFinding(true)}
+                sx={{ mr: 2 }}
+              >
+                Add Another Finding
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={() => handleInspectionSubmit("no")}
+              >
+                Submit Failed Inspection with Findings
+              </Button>
+            </Box>
+          </>
+        )}
+
+        {findings.length === 0 && (
+          <Button variant="contained" onClick={() => setAddingFinding(true)}>
+            Add First Finding
+          </Button>
+        )}
+      </>
+    )}
+  </Box>
+)}
+
+          {findings.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2">Findings:</Typography>
+              {findings.map((finding, index) => (
+                <Typography key={index} sx={{ mb: 1 }}>
+                  - {finding}
+                </Typography>
+              ))}
+            </Box>
+          )}
+        </Paper>
       )}
+      
+      {Array.isArray(component.inspection?.findings) &&
+  component.inspection.findings.length > 0 && (
+    <Paper sx={{ p: 3, mb: 4 }}>
+      <Typography variant="h6" gutterBottom>
+        Saved Inspection Findings
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 2 }}>
+        These findings were reported during the last failed inspection.
+      </Typography>
+      <ul>
+        {(component.inspection.findings as string[]).map((finding, idx) => (
+          <li key={idx}>
+            <Typography variant="body1">{finding}</Typography>
+          </li>
+        ))}
+      </ul>
+      <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+        Last Checked:{" "}
+        {component.inspection.lastChecked
+          ? new Date(component.inspection.lastChecked).toLocaleDateString()
+          : "N/A"}
+      </Typography>
+    </Paper>
+)}
+
+
+
+<EditComponentModal
+  open={editOpen}
+  component={component}
+  onClose={() => setEditOpen(false)}
+  onSave={handleUpdate}  // <-- this stays the same!
+/>
+
     </Box>
   );
 };
