@@ -9,14 +9,12 @@ import {
   List,
   ListItem,
   ListItemText,
-  CircularProgress,
-  ListItemButton,
 } from "@mui/material";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase";
 
-import TaskList from "./Tasks/TaskList";
+import { useRole } from "../contexts/RoleContext";
 
 interface Equipment {
   id: string;
@@ -25,14 +23,10 @@ interface Equipment {
   createdAt?: any;
 }
 
-interface Inspection {
+interface CustomTile {
   id: string;
-  componentName: string;
-  assetName: string;
-  timestamp: any;
-  status: string;
-  notes: string;
-  componentId: string;
+  title: string;
+  items: string[];
 }
 
 const StatCard = ({ title, value }: { title: string; value: number | string }) => (
@@ -48,16 +42,15 @@ const StatCard = ({ title, value }: { title: string; value: number | string }) =
   </Card>
 );
 
-// ...imports remain unchanged...
-
 const DashboardHome: React.FC = () => {
   const [assignedKeysCount, setAssignedKeysCount] = useState<number>(0);
   const [lockboxKeysCount, setLockboxKeysCount] = useState<number>(0);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [handToolCount, setHandToolCount] = useState<number>(0);
   const [powerToolCount, setPowerToolCount] = useState<number>(0);
-  const [failedInspections, setFailedInspections] = useState<Inspection[] | null>(null);
+  const [customTiles, setCustomTiles] = useState<CustomTile[]>([]);
   const navigate = useNavigate();
+  const { role } = useRole();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -69,54 +62,94 @@ const DashboardHome: React.FC = () => {
 
       setAssignedKeysCount(assignedSnap.size);
       setLockboxKeysCount(lockboxSnap.size);
-      setEquipment(equipmentSnap.docs.map(doc => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Equipment, "id">)
-      })));
+      setEquipment(
+        equipmentSnap.docs.map((doc) => ({
+          id: doc.id,
+          ...(doc.data() as Omit<Equipment, "id">),
+        }))
+      );
       setHandToolCount(handToolsSnap.size);
       setPowerToolCount(powerToolsSnap.size);
     };
 
-    const fetchFailedInspections = async () => {
-      const allInspectionsSnap = await getDocs(collection(db, "componentInspections"));
-      const allInspections = allInspectionsSnap.docs.map(doc => ({
+    const fetchTiles = async () => {
+      const snap = await getDocs(collection(db, "dashboardTiles"));
+      const tiles = snap.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data(),
-      })) as Inspection[];
-
-      const latestByComponent = new Map<string, Inspection>();
-
-      for (const inspection of allInspections) {
-        const current = latestByComponent.get(inspection.componentId);
-        const currentTime = current?.timestamp?.seconds ?? 0;
-        const newTime = inspection.timestamp?.seconds ?? 0;
-
-        if (!current || newTime > currentTime) {
-          latestByComponent.set(inspection.componentId, inspection);
-        }
-      }
-
-      const failed = Array.from(latestByComponent.values()).filter(
-        (i) => i.status === "fail"
-      );
-      failed.sort((a, b) => (b.timestamp?.seconds ?? 0) - (a.timestamp?.seconds ?? 0));
-      setFailedInspections(failed);
+        ...(doc.data() as Omit<CustomTile, "id">),
+      }));
+      setCustomTiles(tiles);
     };
 
     fetchData();
-    fetchFailedInspections();
+    fetchTiles();
   }, []);
 
-  const brokenEquipment = equipment.filter(e =>
-    e.condition?.toLowerCase().includes("broken") ||
-    e.condition?.toLowerCase().includes("out of service")
+  const brokenEquipment = equipment.filter(
+    (e) =>
+      e.condition?.toLowerCase().includes("broken") ||
+      e.condition?.toLowerCase().includes("out of service")
   );
+
+  const handleAddItem = async (tileId: string, newItem: string) => {
+    const tile = customTiles.find((t) => t.id === tileId);
+    if (!tile) return;
+
+    const newItems = [...tile.items, newItem];
+    await updateDoc(doc(db, "dashboardTiles", tileId), {
+      items: newItems,
+    });
+
+    setCustomTiles((prev) =>
+      prev.map((t) => (t.id === tileId ? { ...t, items: newItems } : t))
+    );
+  };
+
+  const handleRemoveItem = async (tileId: string, itemIdx: number) => {
+    const tile = customTiles.find((t) => t.id === tileId);
+    if (!tile) return;
+
+    const newItems = tile.items.filter((_, i) => i !== itemIdx);
+    await updateDoc(doc(db, "dashboardTiles", tileId), {
+      items: newItems,
+    });
+
+    setCustomTiles((prev) =>
+      prev.map((t) => (t.id === tileId ? { ...t, items: newItems } : t))
+    );
+  };
+
+  const handleAddTemplate = async () => {
+    // Predefined template data
+    const template: CustomTile = {
+      id: "priorityList",
+      title: "Priority List",
+      items: ["Placeholder Item 1", "Placeholder Item 2", "Placeholder Item 3"],
+    };
+
+    // Add template to Firestore
+    const tileRef = doc(db, "dashboardTiles", template.id);
+    await setDoc(tileRef, template);
+
+    // Update state to reflect new template
+    setCustomTiles((prev) => [...prev, template]);
+  };
+
+  const handleDeleteTemplate = async (tileId: string) => {
+    // Remove template from Firestore
+    await deleteDoc(doc(db, "dashboardTiles", tileId));
+
+    // Remove from local state
+    setCustomTiles((prev) => prev.filter((tile) => tile.id !== tileId));
+  };
 
   return (
     <Box sx={{ px: 4, py: 3 }}>
       <Typography variant="h4" fontWeight="bold" gutterBottom>
         Dashboard
       </Typography>
+
+
 
       <Grid container spacing={4}>
         {/* Stat Cards Row */}
@@ -145,7 +178,7 @@ const DashboardHome: React.FC = () => {
 
         {/* Three Column Layout for Detailed Boxes */}
         <Grid item xs={12} {...({} as any)}>
-          <Grid container spacing={4} {...({} as any)}>
+          <Grid container spacing={4}>
             {/* Out of Service Equipment */}
             <Grid item xs={12} md={4} {...({} as any)}>
               <Card elevation={2}>
@@ -174,63 +207,75 @@ const DashboardHome: React.FC = () => {
               </Card>
             </Grid>
 
-            {/* Failed Inspections */}
-            <Grid item xs={12} md={4} {...({} as any)}>
-              <Card elevation={2}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Failed Inspections
-                  </Typography>
-                  <Divider sx={{ mb: 1 }} />
-                  {failedInspections === null ? (
-                    <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-                      <CircularProgress />
-                    </Box>
-                  ) : failedInspections.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary">
-                      No failed inspections.
+            {/* Custom Tiles */}
+            {customTiles.map((tile) => (
+              <Grid item xs={12} md={4} key={tile.id} {...({} as any)}>
+                <Card elevation={2}>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      {tile.title}
                     </Typography>
-                  ) : (
-                    <List dense>
-                      {failedInspections.map((inspection) => (
-                        <ListItemButton
-                          key={inspection.id}
-                          onClick={() => navigate(`/components/${inspection.componentId}`)}
-                        >
-                          <ListItemText
-                            primary={`${inspection.assetName} – ${inspection.componentName}`}
-                            secondary={
-                              <>
-                                <span>{inspection.notes}</span>
-                                <br />
-                                <span>
-                                  {inspection.timestamp
-                                    ? new Date(inspection.timestamp.seconds * 1000).toLocaleString()
-                                    : "No date"}
-                                </span>
-                              </>
+                    <Divider sx={{ mb: 1 }} />
+                    {tile.items.length === 0 ? (
+                      <Typography variant="body2" color="text.secondary">
+                        No items added yet.
+                      </Typography>
+                    ) : (
+                      <List dense>
+                        {tile.items.map((item, idx) => (
+                          <ListItem
+                            key={idx}
+                            secondaryAction={
+                              role === "admin" && (
+                                <Typography
+                                  component="button"
+                                  color="error"
+                                  sx={{ cursor: "pointer", ml: 1 }}
+                                  onClick={() => handleRemoveItem(tile.id, idx)}
+                                >
+                                  🗑️
+                                </Typography>
+                              )
                             }
-                          />
-                        </ListItemButton>
-                      ))}
-                    </List>
-                  )}
-                </CardContent>
-              </Card>
-            </Grid>
+                          >
+                            <ListItemText primary={item} />
+                          </ListItem>
+                        ))}
+                      </List>
+                    )}
 
-            {/* Ongoing Tasks */}
-            <Grid item xs={12} md={4} {...({} as any)}>
-              <Card elevation={2}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Ongoing Tasks & Priorities
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <TaskList listStyle />
-                </CardContent>
-              </Card>
-            </Grid>
+                    {role === "admin" && (
+                      <Box
+                        component="form"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const form = e.target as typeof e.target & {
+                            newItem: { value: string };
+                          };
+                          const newItem = form.newItem.value.trim();
+                          if (!newItem) return;
+                          handleAddItem(tile.id, newItem);
+                          form.newItem.value = "";
+                        }}
+                        sx={{ display: "flex", gap: 1, mt: 2 }}
+                      >
+                        <input
+                          name="newItem"
+                          placeholder="Enter new item"
+                          style={{
+                            flex: 1,
+                            padding: "8px",
+                            borderRadius: "4px",
+                            border: "1px solid #ccc",
+                          }}
+                        />
+                        <button type="submit">Add</button>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
         </Grid>
       </Grid>
@@ -239,4 +284,3 @@ const DashboardHome: React.FC = () => {
 };
 
 export default DashboardHome;
-
