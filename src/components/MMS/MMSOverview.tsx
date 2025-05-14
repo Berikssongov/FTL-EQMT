@@ -51,6 +51,14 @@ const MMSOverview: React.FC = () => {
     }
   };
 
+  const categoryOrder = [
+    "Buildings",
+    "Grounds",
+    "Presentations",
+    "Fortifications",
+    "Utilities",
+  ];
+
   useEffect(() => {
     fetchAssets();
   }, []);
@@ -62,6 +70,11 @@ const MMSOverview: React.FC = () => {
     acc[cat].push(asset);
     return acc;
   }, {});
+  
+  // Sort each group alphabetically by asset name
+  Object.keys(groupedAssets).forEach(category => {
+    groupedAssets[category].sort((a, b) => a.name.localeCompare(b.name));
+  });
 
   
   // Show "Under Construction" page for non-admins
@@ -89,7 +102,16 @@ const MMSOverview: React.FC = () => {
           <CircularProgress />
         </Box>
       ) : (
-        Object.entries(groupedAssets).map(([category, items]) => (
+        [...Object.entries(groupedAssets)]
+  .sort(([a], [b]) => {
+    const aIndex = categoryOrder.indexOf(a);
+    const bIndex = categoryOrder.indexOf(b);
+    if (aIndex === -1 && bIndex === -1) return a.localeCompare(b); // Both custom
+    if (aIndex === -1) return 1; // a is unknown -> after b
+    if (bIndex === -1) return -1; // b is unknown -> after a
+    return aIndex - bIndex;
+  })
+  .map(([category, items]) => (
           <Box key={category} sx={{ mt: 4 }}>
             <Typography variant="h5" sx={{ mb: 2 }}>
               {category}
