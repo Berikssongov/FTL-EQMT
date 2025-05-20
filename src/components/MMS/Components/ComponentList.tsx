@@ -5,7 +5,11 @@ import {
   Paper,
   Button,
   CircularProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { db } from "../../../firebase";
@@ -24,6 +28,7 @@ type ComponentItem = {
   location?: string;
   category?: string;
   condition?: string;
+  room?: string;
   inspection: {
     frequency: string;
     lastChecked: string | null;
@@ -60,6 +65,49 @@ const ComponentList: React.FC<Props> = ({ assetId }) => {
     fetchComponents();
   }, [assetId]);
 
+  const exterior = components.filter(c => (c.location || '').toLowerCase() === "exterior");
+  const interior = components.filter(c => (c.location || '').toLowerCase() !== "exterior");
+
+  const groupByRoom = (comps: ComponentItem[]) => {
+    const grouped: { [room: string]: ComponentItem[] } = {};
+    comps.forEach(c => {
+      const room = c.room || "Unassigned Room";
+      if (!grouped[room]) grouped[room] = [];
+      grouped[room].push(c);
+    });
+    return grouped;
+  };
+
+  const renderComponentCard = (comp: ComponentItem) => (
+    <Paper
+      key={comp.id}
+      sx={{
+        p: 2,
+        mb: 2,
+        cursor: "pointer",
+        transition: "background-color 0.2s",
+        "&:hover": { backgroundColor: "#f5f5f5" },
+      }}
+      onClick={() => navigate(`/components/${comp.id}`)}
+    >
+      <Typography
+        variant="subtitle1"
+        fontWeight={500}
+        color={comp.inspection?.status === "fail" ? "error" : "textPrimary"}
+      >
+        {comp.name}
+      </Typography>
+      <Typography variant="body2" color="textSecondary">
+        Type: {comp.type} • Category: {comp.category} • Location: {comp.location}
+      </Typography>
+      <Typography variant="body2" color="textSecondary">
+        Condition: {comp.condition} • Next Inspection: {comp.inspection?.nextDue
+          ? format(new Date(comp.inspection.nextDue), "yyyy-MM-dd")
+          : "Not set"}
+      </Typography>
+    </Paper>
+  );
+
   return (
     <Box sx={{ mt: 4 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
@@ -77,35 +125,28 @@ const ComponentList: React.FC<Props> = ({ assetId }) => {
         <Typography color="textSecondary">No components found.</Typography>
       ) : (
         <Box>
-          {components.map((comp) => (
-            <Paper
-              key={comp.id}
-              sx={{
-                p: 2,
-                mb: 2,
-                cursor: "pointer",
-                transition: "background-color 0.2s",
-                "&:hover": { backgroundColor: "#f5f5f5" },
-              }}
-              onClick={() => navigate(`/components/${comp.id}`)}
-            >
-              <Typography
-                variant="subtitle1"
-                fontWeight={500}
-                color={comp.inspection?.status === "fail" ? "error" : "textPrimary"}
-              >
-                {comp.name}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Type: {comp.type} • Category: {comp.category} • Location: {comp.location}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Condition: {comp.condition} • Next Inspection:{" "}
-                {comp.inspection?.nextDue
-                  ? format(new Date(comp.inspection.nextDue), "yyyy-MM-dd")
-                  : "Not set"}
-              </Typography>
-            </Paper>
+          {/* Exterior section */}
+          {exterior.length > 0 && (
+            <Accordion defaultExpanded={false}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h6">Exterior Components</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                {exterior.map(renderComponentCard)}
+              </AccordionDetails>
+            </Accordion>
+          )}
+
+          {/* Interior section grouped by room */}
+          {Object.entries(groupByRoom(interior)).map(([room, comps]) => (
+            <Accordion key={room} defaultExpanded={false}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h6">Room: {room}</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                {comps.map(renderComponentCard)}
+              </AccordionDetails>
+            </Accordion>
           ))}
         </Box>
       )}

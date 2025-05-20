@@ -51,6 +51,8 @@ const InspectionWizard: React.FC<Props> = ({ open, onClose, componentIds }) => {
       nextDueDate.setMonth(today.getMonth() + 3);
     } else if (frequency === "Yearly") {
       nextDueDate.setFullYear(today.getFullYear() + 1);
+    } else if (frequency === "Five Year") {
+      nextDueDate.setFullYear(today.getFullYear() + 5);
     }
 
     return nextDueDate.toISOString().split("T")[0];  // return date in YYYY-MM-DD format

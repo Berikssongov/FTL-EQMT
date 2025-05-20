@@ -100,31 +100,38 @@ const ComponentDetail: React.FC = () => {
       return;
     }
 
-    // Calculate the new next due date based on the frequency
-    const now = new Date();
-    const newNextDue = new Date(now); // clone current date
-    const freq = component.inspection.frequency.toLowerCase();
+// Calculate the new next due date based on the frequency
+const now = new Date();
+const newNextDue = new Date(now); // clone current date
+const freq = component.inspection.frequency.toLowerCase();
 
-    switch (freq) {
-      case "monthly":
-        newNextDue.setMonth(newNextDue.getMonth() + 1);
-        break;
-      case "quarterly":
-        newNextDue.setMonth(newNextDue.getMonth() + 3);
-        break;
-      case "semi-annually":
-      case "biannually":
-        newNextDue.setMonth(newNextDue.getMonth() + 6);
-        break;
-      case "yearly":
-      case "annually":
-        newNextDue.setFullYear(newNextDue.getFullYear() + 1);
-        break;
-      default:
-        // if unknown or not set, leave nextDue unchanged or set to null
-        console.warn("⚠️ Unknown frequency:", freq);
-        break;
-    }
+switch (freq) {
+  case "monthly":
+    newNextDue.setMonth(newNextDue.getMonth() + 1);
+    break;
+  case "quarterly":
+    newNextDue.setMonth(newNextDue.getMonth() + 3);
+    break;
+  case "semi-annually":
+  case "biannually":
+    newNextDue.setMonth(newNextDue.getMonth() + 6);
+    break;
+  case "yearly":
+  case "annually":
+    newNextDue.setFullYear(newNextDue.getFullYear() + 1);
+    break;
+  case "five year":
+  case "five years":
+  case "5 year":
+  case "5 years":
+    newNextDue.setFullYear(newNextDue.getFullYear() + 5);
+    break;
+  default:
+    // if unknown or not set, leave nextDue unchanged or set to null
+    console.warn("⚠️ Unknown frequency:", freq);
+    break;
+}
+
 
     const updatedInspection = {
       ...component.inspection,

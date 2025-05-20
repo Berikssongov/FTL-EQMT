@@ -47,16 +47,22 @@ const EditComponentModal: React.FC<Props> = ({ open, onClose, onSave, component 
   const [tags, setTags] = useState<string[]>(component.tags || []);
   const [error, setError] = useState("");
 
-  const exteriorCategories = ["Weather Envelope", "Structure", "Landscaping", "Other"];
-  const interiorCategories = ["Fixtures", "Finishes", "HVAC", "Electrical", "Plumbing", "Other"];
+  const exteriorCategories = ["Weather Envelope", "Structure", "Landscaping", "Grounds", "Other"];
+  const interiorCategories = ["Electrical", "HVAC", "Plumbing", "Fire Systems", "Life Safety", "Finishes", "Millwork", "Other"];
 
   const typeMap: Record<string, string[]> = {
-    "Weather Envelope": ["Roofing", "Siding", "Gutters"],
-    Structure: ["Decks", "Foundation", "Stairs"],
-    Landscaping: ["Grass", "Shrubs", "Irrigation"],
-    Fixtures: ["Lights", "Outlets"],
-    HVAC: ["Heater", "AC Unit"],
-    Plumbing: ["Toilet", "Sink"],
+    "Weather Envelope": ["Roofing", "Siding", "Gutters", "Flashing", "Fenestration"],
+    Structure: ["Decks", "Foundation", "Stairs", "Ramp"],
+    Landscaping: ["Sub-Surface Drainage", "Shrubs", "Plant Beds"],
+    Grounds: ["Parking Lot Lines", "Light Posts", "Gates"],
+    Electrical: ["Lights", "Outlets", "Displays/Signs", "Door Opener", "Alarm System"],
+    HVAC: ["Heater", "AC Unit", "Vent/Fan"],
+    Plumbing: ["Toilet", "Sink", "Water Cooler"],
+    "Fire Systems": ["Pull Station", "Emergency Lighting", "Fire Suppression"],
+    "Life Safety": ["First Aid Kit", "AED"],
+    Finishes: ["Ceilings, Walls, Floors"],
+    Millwork: ["Doors, Baseboard, Casings", "Cabinet"],
+    Other: ["Exterior Outlets", "Lighting", "Electrical Devices", "Spigot"],
   };
 
   const categoryOptions =
@@ -192,7 +198,7 @@ const EditComponentModal: React.FC<Props> = ({ open, onClose, onSave, component 
             size="small"
           >
             <MenuItem value="" disabled>-- Select Frequency --</MenuItem>
-            {["daily", "weekly", "monthly", "quarterly", "yearly"].map((opt) => (
+            {["monthly", "quarterly", "yearly", "five Year"].map((opt) => (
               <MenuItem key={opt} value={opt}>
                 {opt.charAt(0).toUpperCase() + opt.slice(1)}
               </MenuItem>

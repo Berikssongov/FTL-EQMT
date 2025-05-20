@@ -14,7 +14,14 @@ import {
   Box,
   Typography,
 } from "@mui/material";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  getDocs,
+  doc,
+  setDoc,
+} from "firebase/firestore";
 import { db } from "../../../firebase";
 
 import { useRole } from "../../../contexts/RoleContext";
@@ -27,14 +34,10 @@ interface Props {
 }
 
 const AddComponentModal: React.FC<Props> = ({ open, onClose, onSaved, assetId }) => {
-  const { role, loading: roleLoading } = useRole(); // Get the role using the hook
+  const { role, loading: roleLoading } = useRole();
 
-  // If role is still loading, show a loading spinner
-  if (roleLoading) {
-    return <CircularProgress />;
-  }
+  if (roleLoading) return <CircularProgress />;
 
-  // Check if the user is an admin
   if (role !== "admin") {
     return (
       <Box sx={{ p: 3 }}>
@@ -53,18 +56,26 @@ const AddComponentModal: React.FC<Props> = ({ open, onClose, onSaved, assetId })
   const [tags, setTags] = useState<string[]>([]);
   const [condition, setCondition] = useState("__unset__");
   const [error, setError] = useState("");
+  const [rooms, setRooms] = useState<string[]>([]);
+  const [selectedRoom, setSelectedRoom] = useState("__unset__");
+  const [newRoomName, setNewRoomName] = useState("");
 
-  const exteriorCategories = ["Weather Envelope", "Structure", "Landscaping", "Other"];
-  const interiorCategories = ["Electrical", "Finishes", "HVAC", "Electrical", "Plumbing", "Other"];
+  const exteriorCategories = ["Weather Envelope", "Structure", "Landscaping", "Grounds", "Other"];
+  const interiorCategories = ["Electrical", "HVAC", "Plumbing", "Fire Systems", "Life Safety", "Finishes", "Millwork", "Other"];
 
   const typeMap: Record<string, string[]> = {
     "Weather Envelope": ["Roofing", "Siding", "Gutters", "Flashing", "Fenestration"],
     Structure: ["Decks", "Foundation", "Stairs", "Ramp"],
     Landscaping: ["Sub-Surface Drainage", "Shrubs", "Plant Beds"],
-    Electrical: ["Lights", "Outlets", "Displays/Signs"],
+    Grounds: ["Parking Lot Lines", "Light Posts", "Gates"],
+    Electrical: ["Lights", "Outlets", "Displays/Signs", "Door Opener", "Alarm System", "Appliance"],
     HVAC: ["Heater", "AC Unit", "Vent/Fan"],
-    Plumbing: ["Toilet", "Sink", "Water Cooler"],
-    Other: ["Outlets", "Lighting", "Electrical Devices", "Spigot"]
+    Plumbing: ["Fixtures", "Water Cooler", "Washing Machine", "Floor Drain"],
+    "Fire Systems": ["Pull Station", "Emergency Lighting", "Fire Suppression"],
+    "Life Safety": ["First Aid Kit", "AED"],
+    Finishes: ["Ceilings, Walls, Floors"],
+    Millwork: ["Doors, Baseboard, Casings", "Cabinet"],
+    Other: ["Exterior Outlets", "Lighting", "Electrical Devices", "Spigot"],
   };
 
   const categoryOptions =
@@ -93,8 +104,42 @@ const AddComponentModal: React.FC<Props> = ({ open, onClose, onSaved, assetId })
       setTags([]);
       setCondition("__unset__");
       setError("");
+      setRooms([]);
+      setSelectedRoom("__unset__");
+      setNewRoomName("");
     }
   }, [open]);
+
+  useEffect(() => {
+    if (location === "Interior" && assetId) {
+      const fetchRooms = async () => {
+        try {
+          const snapshot = await getDocs(collection(db, `assets/${assetId}/rooms`));
+          const roomNames = snapshot.docs.map(doc => doc.data().name).filter(Boolean);
+          setRooms(roomNames);
+        } catch (err) {
+          console.error("Failed to fetch rooms:", err);
+          setRooms([]);
+        }
+      };
+      fetchRooms();
+    }
+  }, [location, assetId]);
+
+  const handleAddRoom = async () => {
+    if (!newRoomName.trim()) return;
+    try {
+      const id = newRoomName.trim().toLowerCase().replace(/\s+/g, "-");
+      await setDoc(doc(db, `assets/${assetId}/rooms`, id), {
+        name: newRoomName.trim(),
+        createdAt: serverTimestamp(),
+      });
+      setRooms((prev) => [...prev, newRoomName.trim()]);
+      setNewRoomName("");
+    } catch (err) {
+      console.error("Failed to add room:", err);
+    }
+  };
 
   const handleSubmit = async () => {
     if (
@@ -103,7 +148,8 @@ const AddComponentModal: React.FC<Props> = ({ open, onClose, onSaved, assetId })
       category === "__unset__" ||
       type === "__unset__" ||
       condition === "__unset__" ||
-      frequency === "__unset__"
+      frequency === "__unset__" ||
+      (location === "Interior" && rooms.length > 0 && selectedRoom === "__unset__")
     ) {
       setError("Please complete all required fields.");
       return;
@@ -119,6 +165,7 @@ const AddComponentModal: React.FC<Props> = ({ open, onClose, onSaved, assetId })
         itemType: type,
         condition,
         tags,
+        room: location === "Interior" && selectedRoom !== "__unset__" ? selectedRoom : null,
         inspection: {
           frequency,
           lastChecked: null,
@@ -166,6 +213,7 @@ const AddComponentModal: React.FC<Props> = ({ open, onClose, onSaved, assetId })
               setLocation(loc);
               setCategory("__unset__");
               setType("__unset__");
+              setSelectedRoom("__unset__");
             }}
             fullWidth
             size="small"
@@ -218,6 +266,42 @@ const AddComponentModal: React.FC<Props> = ({ open, onClose, onSaved, assetId })
             ))}
           </TextField>
 
+          {location === "Interior" && rooms.length > 0 && (
+            <TextField
+              select
+              label="Room"
+              value={selectedRoom}
+              onChange={(e) => setSelectedRoom(e.target.value)}
+              fullWidth
+              size="small"
+            >
+              <MenuItem value="__unset__" disabled>
+                -- Select Room --
+              </MenuItem>
+              {rooms.map((room) => (
+                <MenuItem key={room} value={room}>
+                  {room}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
+
+          {/* Temporary: Add Room Input */}
+          {location === "Interior" && (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <TextField
+                label="Add New Room"
+                value={newRoomName}
+                onChange={(e) => setNewRoomName(e.target.value)}
+                size="small"
+                fullWidth
+              />
+              <Button onClick={handleAddRoom} variant="outlined">
+                Add Room
+              </Button>
+            </Stack>
+          )}
+
           <TextField
             select
             label="Condition"
@@ -247,7 +331,7 @@ const AddComponentModal: React.FC<Props> = ({ open, onClose, onSaved, assetId })
             <MenuItem value="__unset__" disabled>
               -- Select Frequency --
             </MenuItem>
-            {["daily", "weekly", "monthly", "quarterly", "yearly"].map((opt) => (
+            {["monthly", "quarterly", "yearly", "five Year"].map((opt) => (
               <MenuItem key={opt} value={opt}>
                 {opt.charAt(0).toUpperCase() + opt.slice(1)}
               </MenuItem>
