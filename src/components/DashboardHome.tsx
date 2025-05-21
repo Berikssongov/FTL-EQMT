@@ -89,6 +89,7 @@ const DashboardHome: React.FC = () => {
   const navigate = useNavigate();
   const { role } = useRole();
   const [findings, setFindings] = useState<Finding[]>([]);
+  const [componentsWithFindings, setComponentsWithFindings] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -99,23 +100,45 @@ const DashboardHome: React.FC = () => {
       const powerToolsSnap = await getDocs(collection(db, "powerTools"));
       const tilesSnap = await getDocs(collection(db, "dashboardTiles"));
       const findingsSnap = await getDocs(collection(db, "findings"));
+      const componentsSnap = await getDocs(collection(db, "components"));
 
-      const allFindings = findingsSnap.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Finding, "id">),
-      })) as Finding[];
+const allComponents = componentsSnap.docs.map((doc) => ({
+  id: doc.id,
+  ...(doc.data() as any),
+}));
 
-      const latestFindingsMap = new Map<string, Finding>();
-      allFindings.forEach((f) => {
-        if (f.resolved) return;
-        const key = `${f.assetName}-${f.componentName}`;
-        const existing = latestFindingsMap.get(key);
-        if (!existing || new Date(f.date) > new Date(existing.date)) {
-          latestFindingsMap.set(key, f);
-        }
-      });
+console.log("✅ All components from Firestore:", allComponents);
 
-      setFindings(Array.from(latestFindingsMap.values()));
+const componentsWithIssues = allComponents.filter((component) => {
+  const findings = component.inspection?.findings;
+  const status = component.inspection?.status?.toLowerCase?.() || "";
+
+  const hasFindings = Array.isArray(findings) && findings.length > 0;
+  const isUnresolved = status === "no";
+
+  return hasFindings && isUnresolved;
+
+});
+
+allComponents.forEach((component) => {
+  console.log(
+    "Component:",
+    component.name,
+    "Status:",
+    component.inspection?.status,
+    "Findings:",
+    component.inspection?.findings
+  );
+});
+
+
+
+console.log("✅ Filtered componentsWithIssues:", componentsWithIssues);
+setComponentsWithFindings(componentsWithIssues);
+
+
+
+     
       setAssignedKeysCount(assignedSnap.size);
       setLockboxKeysCount(lockboxSnap.size);
       setEquipment(
@@ -231,31 +254,43 @@ const DashboardHome: React.FC = () => {
       <Grid container spacing={3}>
         {/* Findings */}
         <Grid item xs={12} md={4} {...({} as any)}>
-          <Card elevation={2}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Findings Requiring Attention
-              </Typography>
-              <Divider sx={{ mb: 1 }} />
-              {findings.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No outstanding findings.
-                </Typography>
-              ) : (
-                <List dense>
-                  {findings.map((f) => (
-                    <ListItem key={f.id}>
-                      <ListItemText
-                        primary={`${f.assetName} - ${f.componentName}`}
-                        secondary={`Reported: ${new Date(f.date).toLocaleDateString()}`}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
+        <Card elevation={2}>
+    <CardContent>
+      <Typography variant="h6" gutterBottom>
+        Findings Requiring Attention
+      </Typography>
+      <Divider sx={{ mb: 1 }} />
+      {componentsWithFindings.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          No outstanding findings.
+        </Typography>
+      ) : (
+        <List dense>
+  {componentsWithFindings.map((comp) => (
+    <ListItem
+      key={comp.id}
+      component={RouterLink}
+      to={`/components/${comp.id}`}
+      sx={{ display: "block", cursor: "pointer" }}
+    >
+      <ListItemText
+        primary={`${comp.name || "Unnamed Component"} — ${comp.room ?? "Unknown Room"}`}
+        secondary={
+          comp.inspection?.findings?.length > 0
+            ? comp.inspection.findings.map((f: string) => `• ${f}`).join("\n")
+            : "No findings listed"
+        }
+      />
+    </ListItem>
+  ))}
+</List>
+
+      )}
+    </CardContent>
+  </Card>
+</Grid>
+
+
 
         {/* Out of Service Equipment */}
         <Grid item xs={12} md={4} {...({} as any)}>
