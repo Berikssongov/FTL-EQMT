@@ -17,6 +17,8 @@ import KeySearchPanel from "./KeySearchPanel";
 import KeyLogTable from "./KeyLogTable";
 import { useRole } from "../../contexts/RoleContext"; // ✅ NEW
 import { useAuth } from "../../contexts/AuthContext";
+import AddKeyPanel from "./AddKeyPanel";
+
 
 interface KeyLogEntry {
   id: string;
@@ -65,7 +67,12 @@ const KeyManagementPage: React.FC = () => {
         Key Management
       </Typography>
 
-      {(role === "manager" || role === "admin") && <KeyFormPanel />} {/* ✅ Restrict form access */}
+      {(role === "manager" || role === "admin") && (
+  <>
+    <KeyFormPanel />
+    {role === "admin" && <AddKeyPanel />} {/* 🔐 Admin-only Add Panel */}
+  </>
+)}
 
       <Divider sx={{ my: 4 }} />
       <KeySearchPanel />
