@@ -123,12 +123,11 @@ const AppHeader: React.FC = () => {
             </IconButton>
             <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleSettingsClose}>
             {role === "admin" && (
-  <MenuItem onClick={() => handleNav("/locations")}>
-    Manage Locations
-  </MenuItem>
-)}
+              <MenuItem onClick={() => handleNav("/locations")}> Manage Locations </MenuItem>)}
               <MenuItem onClick={() => handleNav("/keys-assigned")}>Keys Assigned</MenuItem>
               <MenuItem onClick={() => handleNav("/keys-lockbox")}>Lockbox Keys</MenuItem>
+              {role === "admin" && (
+              <MenuItem onClick={() => handleNav("/settings/backup")}>Backup & Restore</MenuItem>)}
             </Menu>
           </Box>
         </Toolbar>

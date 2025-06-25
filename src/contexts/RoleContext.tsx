@@ -11,6 +11,7 @@ interface RoleContextType {
   firstName?: string;
   lastName?: string;
   fullName?: string;
+  superAdmin?: boolean;
 }
 
 const RoleContext = createContext<RoleContextType>({
@@ -23,6 +24,7 @@ export const RoleProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [firstName, setFirstName] = useState<string | undefined>();
   const [lastName, setLastName] = useState<string | undefined>();
+  const [superAdmin, setSuperAdmin] = useState<boolean | undefined>();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user: User | null) => {
@@ -36,17 +38,21 @@ export const RoleProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setRole((data.role as Role) || "user");
             setFirstName(data.firstName);
             setLastName(data.lastName);
+            setSuperAdmin(data.superAdmin === true);
           } else {
             setRole("user");
+            setSuperAdmin(false);
           }
         } catch (error) {
           console.error("Error loading user info:", error);
           setRole("user");
+          setSuperAdmin(false);
         }
       } else {
         setRole("guest");
         setFirstName(undefined);
         setLastName(undefined);
+        setSuperAdmin(false);
       }
       setLoading(false);
     });
@@ -57,7 +63,9 @@ export const RoleProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fullName = firstName && lastName ? `${firstName} ${lastName}` : undefined;
 
   return (
-    <RoleContext.Provider value={{ role, loading, firstName, lastName, fullName }}>
+    <RoleContext.Provider
+      value={{ role, loading, firstName, lastName, fullName, superAdmin }}
+    >
       {children}
     </RoleContext.Provider>
   );
@@ -65,11 +73,11 @@ export const RoleProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useRole = () => useContext(RoleContext);
 
-export const isRole = (roleToCheck: Role, currentRole: Role): boolean => currentRole === roleToCheck;
+export const isRole = (roleToCheck: Role, currentRole: Role): boolean =>
+  currentRole === roleToCheck;
 
 export const isAtLeastManager = (role: Role) =>
   role === "manager" || role === "admin";
 
 export const isAtLeastUser = (role: Role) =>
   role === "user" || role === "manager" || role === "admin";
-

@@ -24,6 +24,7 @@ import PowerToolsList from "./components/PowerToolsList";
 import ManageLocationsPage from "./components/ManageLocationsPage";
 import ServiceDetail from "./components/ServiceDetail";
 import PartDetail from "./components/PartDetail";
+import BackupRestorePage from "./pages/BackupRestorePage";
 
 import KeyManagementPage from "./components/Keys/KeyManagementPage";
 import AssignedKeysTable from "./components/Keys/AssignedKeysTable";
@@ -152,6 +153,7 @@ const App: React.FC = () => {
             <Route path="/login" element={<LoginPage />} />
 
             <Route path="/components/:id" element={<ComponentDetail />} />
+            <Route path="/settings/backup" element={<BackupRestorePage />} />
 
 
           </Routes>

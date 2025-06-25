@@ -10,7 +10,7 @@ const firebaseConfig = {
   storageBucket: "ftl-emp.firebasestorage.app",
   messagingSenderId: "810133203475",
   appId: "1:810133203475:web:d9abd6522d9c9204dcade6",
-  measurementId: "G-1SXNRWDHPV",
+  measurementId: "G-1SXNRWDHPV"
 };
 
 const app = initializeApp(firebaseConfig);
