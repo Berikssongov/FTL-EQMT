@@ -1,3 +1,4 @@
+// src/components/Keys/KeyManagementPage.tsx
 import React, { useEffect, useState } from "react";
 import {
   Container,
@@ -9,6 +10,7 @@ import {
   getDocs,
   query,
   orderBy,
+  Timestamp,
 } from "firebase/firestore";
 
 import { db } from "../../firebase";
@@ -19,6 +21,7 @@ import AddKeyPanel from "./AddKeyPanel";
 
 import { useRole } from "../../contexts/RoleContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { KeyData } from "../../types";
 
 interface KeyLogEntry {
   id: string;
@@ -32,32 +35,72 @@ interface KeyLogEntry {
 
 const KeyManagementPage: React.FC = () => {
   const { role, superAdmin, loading } = useRole();
-  const [logs, setLogs] = useState<KeyLogEntry[]>([]);
   const { user } = useAuth();
 
-  useEffect(() => {
-    const fetchLogs = async () => {
+  const [logs, setLogs] = useState<KeyLogEntry[]>([]);
+  const [allKeys, setAllKeys] = useState<KeyData[]>([]);
+
+  // Fetch key logs
+  const fetchLogs = async () => {
+    try {
       const ref = collection(db, "keyLogs");
       const snapshot = await getDocs(query(ref, orderBy("timestamp", "desc")));
 
       const formatted = snapshot.docs.map((doc) => {
         const data = doc.data();
+
+        let dateString = "";
+        if (data.timestamp instanceof Timestamp) {
+          const date = data.timestamp.toDate();
+          dateString = date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } else if (typeof data.timestamp === "string") {
+          const date = new Date(data.timestamp);
+          dateString = date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } else {
+          dateString = "Unknown Date";
+        }
+
         return {
           id: doc.id,
           keyName: data.keyName,
           action: data.action === "Signing Out" ? "Signed Out" : "Signed In",
           person: data.person,
           lockbox: data.lockbox,
-          date: new Date(data.timestamp).toLocaleString(),
+          date: dateString,
           submittedBy: data.submittedBy || user?.displayName || "Unknown",
         };
       });
 
       setLogs(formatted);
-    };
+    } catch (error) {
+      console.error("Error fetching key logs:", error);
+    }
+  };
 
+  // Fetch keys
+  const fetchKeys = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, "keys"));
+      const keys = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<KeyData, "id">),
+      }));
+      setAllKeys(keys);
+    } catch (error) {
+      console.error("Error fetching keys:", error);
+    }
+  };
+
+  useEffect(() => {
     fetchLogs();
+    fetchKeys();
   }, []);
+
+  const refreshAll = async () => {
+    await fetchLogs();
+    await fetchKeys();
+  };
+  
 
   if (loading) {
     return (
@@ -73,11 +116,13 @@ const KeyManagementPage: React.FC = () => {
         Key Management
       </Typography>
 
-      {/* 🔑 Only managers, admins, and superAdmins can sign in/out keys */}
-      {(role === "manager" || role === "admin") && <KeyFormPanel />}
+      {/* 🔑 Only managers and admins can sign keys in/out */}
+      {(role === "manager" || role === "admin") && (
+        <KeyFormPanel keys={allKeys} refreshKeys={refreshAll} />
+      )}
 
       {/* 🔐 Only superAdmins can add keys */}
-      {superAdmin && <AddKeyPanel />}
+      {superAdmin && <AddKeyPanel refreshKeys={refreshAll} />}
 
       <Divider sx={{ my: 4 }} />
 

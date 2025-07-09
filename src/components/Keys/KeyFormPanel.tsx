@@ -1,290 +1,279 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
-  Paper,
-  Typography,
-  TextField,
-  Select,
-  MenuItem,
+  Box,
   Button,
+  Grid,
+  MenuItem,
+  Paper,
+  TextField,
+  Typography,
+  Alert,
   FormControl,
   InputLabel,
-  Grid,
-  Alert,
+  Select,
 } from "@mui/material";
-import {
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  doc,
-  setDoc,
-} from "firebase/firestore";
+import { doc, updateDoc, Timestamp, setDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useRole } from "../../contexts/RoleContext";
 import { useAuth } from "../../contexts/AuthContext";
 
-interface RestrictedKey {
-  id: string;
-  keyName: string;
-  isRestricted: true;
-  currentHolder: {
-    type: "lockbox" | "person";
-    name: string;
-  };
+interface KeyFormPanelProps {
+  keys: any[];
+  refreshKeys: () => Promise<void>;
 }
 
-interface NonRestrictedKey {
-  id: string;
-  keyName: string;
-  isRestricted: false;
-  holders: {
-    type: "lockbox" | "person";
-    name: string;
-    quantity: number;
-  }[];
-}
+const lockboxOptions = [
+  "Maintenance Box",
+  "Operations Box",
+  "Artifacts Box",
+  "Visitor Centre Box",
+  "Other",
+];
 
-type KeyData = RestrictedKey | NonRestrictedKey;
-
-const KeyFormPanel: React.FC = () => {
+const KeyFormPanel: React.FC<KeyFormPanelProps> = ({ keys, refreshKeys }) => {
+  const { user } = useAuth();
   const { role } = useRole();
-  const { user, firstName, lastName } = useAuth();
 
-  if (role !== "manager" && role !== "admin") return null;
+  if (role !== "admin" && role !== "manager") return null;
 
-  const [keys, setKeys] = useState<KeyData[]>([]);
-  const [keyName, setKeyName] = useState("");
   const [action, setAction] = useState("Signing Out");
   const [person, setPerson] = useState("");
-  const [lockboxLocation, setLockboxLocation] = useState("");
-  const [otherLockbox, setOtherLockbox] = useState("");
+  const [lockbox, setLockbox] = useState("");
+  const [customLockbox, setCustomLockbox] = useState("");
+  const [keyName, setKeyName] = useState("");
+  const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  useEffect(() => {
-    const fetchKeys = async () => {
-      const snap = await getDocs(collection(db, "keys"));
-      const fetched = snap.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data()),
-      }));
-      setKeys(fetched as KeyData[]);
-    };
-    fetchKeys();
-  }, []);
-
-  const isRestricted = /^[A-Fa-f]\d{1,2}$/.test(keyName.trim());
-  const finalLockbox = lockboxLocation === "Other" ? otherLockbox.trim() : lockboxLocation;
-  const matchingKey = keys.find(
-    (k) => k.keyName.trim().toLowerCase() === keyName.trim().toLowerCase()
-  );
+  const resolvedLockbox = lockbox === "Other" ? customLockbox.trim() : lockbox;
 
   const handleSubmit = async () => {
     setError("");
     setSuccess("");
 
-    if (!keyName || !person || !finalLockbox) {
-      setError("Please complete all fields.");
+    if (!keyName || !person || !resolvedLockbox || quantity < 1) {
+      setError("Please fill in all fields.");
       return;
     }
 
-    const isBypass = person.trim().toLowerCase() === "created" && role === "admin";
-
-    if (!matchingKey) {
-      const newData = isRestricted
-        ? {
-            keyName: keyName.trim(),
-            isRestricted: true,
-            currentHolder:
-              action === "Signing Out"
-                ? { type: "person", name: person.trim() }
-                : { type: "lockbox", name: finalLockbox },
-          }
-        : {
-            keyName: keyName.trim(),
-            isRestricted: false,
-            holders: [
-              {
-                type: action === "Signing Out" ? "person" : "lockbox",
-                name: action === "Signing Out" ? person.trim() : finalLockbox,
-                quantity: 1,
-              },
-            ],
-          };
-
-      await setDoc(doc(collection(db, "keys")), newData);
-    } else if (matchingKey.isRestricted) {
-      const keyRef = doc(db, "keys", matchingKey.id);
-      const current = matchingKey.currentHolder;
-
-      if (action === "Signing Out") {
-        if (!isBypass && current.type !== "lockbox") {
-          setError(`This key is not in a lockbox and cannot be signed out.`);
-          return;
-        }
-
-        await updateDoc(keyRef, {
-          currentHolder: { type: "person", name: person.trim() },
-        });
-      } else {
-        if (
-          !isBypass &&
-          (current.type !== "person" ||
-            current.name.trim().toLowerCase() !== person.trim().toLowerCase())
-        ) {
-          setError(
-            `This key is not signed out to ${person}. It's with ${current.name}.`
-          );
-          return;
-        }
-
-        await updateDoc(keyRef, {
-          currentHolder: { type: "lockbox", name: finalLockbox },
-        });
-      }
-    } else {
-      const keyRef = doc(db, "keys", matchingKey.id);
-      const holders = [...matchingKey.holders];
-      const type = action === "Signing Out" ? "person" : "lockbox";
-      const name = type === "person" ? person.trim() : finalLockbox;
-
-      const existing = holders.find(
-        (h) => h.type === type && h.name.trim().toLowerCase() === name.toLowerCase()
-      );
-
-      if (action === "Signing Out") {
-        const from = holders.find(
-          (h) =>
-            h.type === "lockbox" &&
-            h.name.trim().toLowerCase() === finalLockbox.toLowerCase()
-        );
-
-        if (!from || from.quantity < 1) {
-          setError(`No "${keyName}" key available at ${finalLockbox}`);
-          return;
-        }
-
-        from.quantity -= 1;
-        if (from.quantity === 0) {
-          holders.splice(holders.indexOf(from), 1);
-        }
-
-        if (existing) existing.quantity += 1;
-        else holders.push({ type: "person", name, quantity: 1 });
-      } else {
-        const from = holders.find(
-          (h) =>
-            h.type === "person" &&
-            h.name.trim().toLowerCase() === person.trim().toLowerCase()
-        );
-
-        if (!from || from.quantity < 1) {
-          setError(`${person} does not have any "${keyName}" keys.`);
-          return;
-        }
-
-        from.quantity -= 1;
-        if (from.quantity === 0) {
-          holders.splice(holders.indexOf(from), 1);
-        }
-
-        if (existing) existing.quantity += 1;
-        else holders.push({ type: "lockbox", name, quantity: 1 });
-      }
-
-      await updateDoc(keyRef, { holders });
+    const key = keys.find((k) => k.keyName === keyName && !k.isRestricted);
+    if (!key) {
+      setError("Key not found.");
+      return;
     }
 
-    const submittedBy = firstName && lastName
-      ? `${firstName} ${lastName}`
-      : user?.email || user?.uid || "Unknown User";
+    const holder = {
+      type: action === "Signing Out" ? "person" : "lockbox",
+      name: action === "Signing Out" ? person : resolvedLockbox,
+      quantity,
+    };
 
-    console.log("Logging key action by:", submittedBy);
+    const oppositeHolder = {
+      type: action === "Signing Out" ? "lockbox" : "person",
+      name: action === "Signing Out" ? resolvedLockbox : person,
+    };
 
-    await addDoc(collection(db, "keyLogs"), {
-      keyName: keyName.trim(),
-      action,
-      person: person.trim(),
-      lockbox: finalLockbox,
-      submittedBy,
-      timestamp: new Date().toISOString(),
-    });
+    const existing = [...key.holders];
+    const match = existing.find(
+      (h) =>
+        h.type === oppositeHolder.type &&
+        h.name.trim().toLowerCase() === oppositeHolder.name.trim().toLowerCase()
+    );
 
-    setSuccess(`Key "${keyName}" successfully ${action}.`);
+    if (!match || match.quantity < quantity) {
+      setError(`Not enough keys in ${oppositeHolder.name}.`);
+      return;
+    }
+
+    match.quantity -= quantity;
+    if (match.quantity <= 0) {
+      const index = existing.indexOf(match);
+      if (index > -1) existing.splice(index, 1);
+    }
+
+    const sameHolder = existing.find(
+      (h) =>
+        h.type === holder.type &&
+        h.name.trim().toLowerCase() === holder.name.trim().toLowerCase()
+    );
+    if (sameHolder) {
+      sameHolder.quantity += quantity;
+    } else {
+      existing.push(holder);
+    }
+
+    try {
+      await updateDoc(doc(db, "keys", key.id), {
+        holders: existing,
+      });
+
+      await setDoc(doc(db, "keyLogs", `${Date.now()}_${keyName}`), {
+        keyName,
+        action,
+        person,
+        lockbox: resolvedLockbox,
+        timestamp: Timestamp.now(),
+        submittedBy: user?.displayName || "Unknown",
+      });
+
+      setSuccess(
+        `${keyName} ${action === "Signing Out" ? "signed out to" : "returned to"} ${
+          action === "Signing Out" ? person : resolvedLockbox
+        }`
+      );
+    } catch (err) {
+      setError("Failed to update Firestore. See console.");
+      return;
+    }
+
     setKeyName("");
     setPerson("");
-    setLockboxLocation("");
-    setOtherLockbox("");
+    setLockbox("");
+    setCustomLockbox("");
+    setQuantity(1);
+
+    try {
+      await refreshKeys();
+    } catch (err) {
+      setError("Key was updated, but refresh failed due to permission error.");
+    }
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
-      <Typography variant="h6" fontWeight={600} gutterBottom>
-        🔐 Key Sign In/Out Form
-      </Typography>
+    <Box sx={{ mt: 2 }}>
+      <Paper elevation={3} sx={{ p: 3 }}>
+        <Typography variant="h6" fontWeight={600} gutterBottom>
+          Sign Key In / Out
+        </Typography>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={6} {...({} as any)}>
-          <TextField
-            label="Key Name"
-            value={keyName}
-            onChange={(e) => setKeyName(e.target.value)}
-            fullWidth
-          />
-        </Grid>
-        <Grid item xs={12} md={6} {...({} as any)}>
-          <FormControl fullWidth>
-            <InputLabel>Action</InputLabel>
-            <Select value={action} onChange={(e) => setAction(e.target.value)} label="Action">
-              <MenuItem value="Signing Out">Signing Out</MenuItem>
-              <MenuItem value="Signing In">Signing In</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
-        <Grid item xs={12} md={6} {...({} as any)}>
-          <TextField
-            label="Person"
-            value={person}
-            onChange={(e) => setPerson(e.target.value)}
-            fullWidth
-          />
-        </Grid>
-        <Grid item xs={12} md={6} {...({} as any)}>
-          <FormControl fullWidth>
-            <InputLabel>Lockbox Location</InputLabel>
-            <Select
-              value={lockboxLocation}
-              onChange={(e) => setLockboxLocation(e.target.value)}
-              label="Lockbox Location"
-            >
-              <MenuItem value="Maintenance Box">Maintenance Box</MenuItem>
-              <MenuItem value="Operations Box">Operations Box</MenuItem>
-              <MenuItem value="Artifacts Box">Artifacts Box</MenuItem>
-              <MenuItem value="Visitor Centre Box">Visitor Centre Box</MenuItem>
-              <MenuItem value="Other">Other</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
-        {lockboxLocation === "Other" && (
-          <Grid item xs={12} {...({} as any)}>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={4} {...({} as any)}>
             <TextField
-              label="Custom Lockbox Name"
-              value={otherLockbox}
-              onChange={(e) => setOtherLockbox(e.target.value)}
+              select
+              label="Key Name"
+              value={keyName}
+              onChange={(e) => setKeyName(e.target.value)}
               fullWidth
+              sx={{ minWidth: 140, flexGrow: 1 }}
+            >
+              {keys.map((k) => (
+                <MenuItem key={k.id} value={k.keyName}>
+                  {k.keyName}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+
+          <Grid item xs={12} sm={4} {...({} as any)}>
+            <TextField
+              select
+              label="Action"
+              value={action}
+              onChange={(e) => setAction(e.target.value)}
+              fullWidth
+            >
+              <MenuItem value="Signing Out">Sign Out</MenuItem>
+              <MenuItem value="Signing In">Sign In</MenuItem>
+            </TextField>
+          </Grid>
+
+          <Grid item xs={12} sm={4} {...({} as any)}>
+            {action === "Signing Out" ? (
+              <TextField
+                label="Person"
+                value={person}
+                onChange={(e) => setPerson(e.target.value)}
+                fullWidth
+              />
+            ) : (
+              <>
+                <FormControl fullWidth sx={{ minWidth: 200 }}>
+                  <InputLabel>Lockbox</InputLabel>
+                  <Select
+                    value={lockbox}
+                    label="Lockbox"
+                    onChange={(e) => setLockbox(e.target.value)}
+                  >
+                    {lockboxOptions.map((box) => (
+                      <MenuItem key={box} value={box}>
+                        {box}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                {lockbox === "Other" && (
+                  <TextField
+                    label="Custom Lockbox Name"
+                    value={customLockbox}
+                    onChange={(e) => setCustomLockbox(e.target.value)}
+                    fullWidth
+                    sx={{ mt: 2 }}
+                  />
+                )}
+              </>
+            )}
+          </Grid>
+
+          <Grid item xs={12} sm={4} {...({} as any)}>
+            {action === "Signing Out" ? (
+              <>
+                <FormControl fullWidth sx={{ minWidth: 200 }}>
+                  <InputLabel>Lockbox</InputLabel>
+                  <Select
+                    value={lockbox}
+                    label="Lockbox"
+                    onChange={(e) => setLockbox(e.target.value)}
+                  >
+                    {lockboxOptions.map((box) => (
+                      <MenuItem key={box} value={box}>
+                        {box}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                {lockbox === "Other" && (
+                  <TextField
+                    label="Custom Lockbox Name"
+                    value={customLockbox}
+                    onChange={(e) => setCustomLockbox(e.target.value)}
+                    fullWidth
+                    sx={{ mt: 2 }}
+                  />
+                )}
+              </>
+            ) : (
+              <TextField
+                label="Person"
+                value={person}
+                onChange={(e) => setPerson(e.target.value)}
+                fullWidth
+              />
+            )}
+          </Grid>
+
+          <Grid item xs={12} sm={2} {...({} as any)}>
+            <TextField
+              label="Quantity"
+              type="number"
+              inputProps={{ min: 1 }}
+              value={quantity}
+              onChange={(e) => setQuantity(Number(e.target.value))}
+              fullWidth
+              sx={{ maxWidth: 80 }}
             />
           </Grid>
-        )}
-        <Grid item xs={12} {...({} as any)}>
-          <Button variant="contained" fullWidth onClick={handleSubmit}>
-            Submit
-          </Button>
+
+          <Grid item xs={12} {...({} as any)}>
+            <Button variant="contained" fullWidth onClick={handleSubmit}>
+              Submit
+            </Button>
+          </Grid>
         </Grid>
-      </Grid>
-    </Paper>
+      </Paper>
+    </Box>
   );
 };
 

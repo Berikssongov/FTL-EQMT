@@ -12,13 +12,14 @@ import {
 import { collection, getDocs, query } from "firebase/firestore";
 import { db } from "../../firebase";
 import { KeyData, KeyLogEntry } from "../../types";
+import { Timestamp } from "firebase/firestore";
 
 const KeySearchPanel: React.FC = () => {
   const [queryText, setQueryText] = useState("");
   const [loading, setLoading] = useState(false);
   const [matchedKeysByName, setMatchedKeysByName] = useState<KeyData[]>([]);
   const [matchedKeysByPerson, setMatchedKeysByPerson] = useState<KeyData[]>([]);
-  const [historyLogs, setHistoryLogs] = useState<KeyLogEntry[]>([]);
+  const [historyLogs, setHistoryLogs] = useState<(KeyLogEntry & { formattedDate: string })[]>([]);
   const [noResults, setNoResults] = useState(false);
 
   const performSearch = async () => {
@@ -29,6 +30,7 @@ const KeySearchPanel: React.FC = () => {
     setNoResults(false);
 
     try {
+      // Fetch keys
       const keysSnap = await getDocs(collection(db, "keys"));
       const keys: KeyData[] = keysSnap.docs.map((doc) => ({
         id: doc.id,
@@ -57,20 +59,56 @@ const KeySearchPanel: React.FC = () => {
       });
       setMatchedKeysByPerson(matchedByPerson);
 
+      // Fetch logs
       const logsSnap = await getDocs(query(collection(db, "keyLogs")));
-      const logs: KeyLogEntry[] = logsSnap.docs.map((doc) => doc.data() as KeyLogEntry);
+      const rawLogs = logsSnap.docs.map((doc) => doc.data() as KeyLogEntry & { timestamp: any });
 
-      const matchedLogs = logs.filter(
-        (log) =>
-          log.person === trimmedQuery || log.keyName === trimmedQuery
+      // Convert Firestore timestamp to formatted string and attach to each log entry
+      const logsWithFormattedDate = rawLogs.map((log) => {
+        let formattedDate = "Unknown Date";
+
+        if (log.timestamp instanceof Timestamp) {
+          formattedDate = log.timestamp.toDate().toLocaleString(undefined, {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          });
+        } else if (typeof log.timestamp === "string") {
+          const dt = new Date(log.timestamp);
+          if (!isNaN(dt.getTime())) {
+            formattedDate = dt.toLocaleString(undefined, {
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            });
+          }
+        }
+
+        return {
+          ...log,
+          formattedDate,
+        };
+      });
+
+      // Filter logs by person or keyName matching query
+      const matchedLogs = logsWithFormattedDate.filter(
+        (log) => log.person === trimmedQuery || log.keyName === trimmedQuery
       );
 
-      setHistoryLogs(
-        matchedLogs.sort(
-          (a, b) =>
-            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        )
-      );
+      // Sort logs by original timestamp descending (newest first)
+      matchedLogs.sort((a, b) => {
+        const aTime = a.timestamp instanceof Timestamp ? a.timestamp.toMillis() : new Date(a.timestamp).getTime();
+        const bTime = b.timestamp instanceof Timestamp ? b.timestamp.toMillis() : new Date(b.timestamp).getTime();
+        return bTime - aTime;
+      });
+
+      setHistoryLogs(matchedLogs);
 
       if (
         matchedByKey.length === 0 &&
@@ -194,7 +232,7 @@ const KeySearchPanel: React.FC = () => {
           {historyLogs.map((log, idx) => (
             <Box key={idx} sx={{ mb: 1 }}>
               <Typography variant="body2">
-                {log.timestamp}: {log.action} <strong>{log.keyName}</strong> —{" "}
+                {log.formattedDate}: {log.action} <strong>{log.keyName}</strong> —{" "}
                 {log.action === "Signing Out"
                   ? `from ${log.lockbox} to ${log.person}`
                   : `from ${log.person} to ${log.lockbox}`}

@@ -1,3 +1,4 @@
+// src/components/Keys/AddKeyPanel.tsx
 import React, { useState } from "react";
 import {
   Paper,
@@ -17,7 +18,11 @@ import { collection, addDoc, getDocs, updateDoc, doc } from "firebase/firestore"
 import { db } from "../../firebase";
 import { useRole } from "../../contexts/RoleContext";
 
-const AddKeyPanel: React.FC = () => {
+interface AddKeyPanelProps {
+  refreshKeys: () => Promise<void>;
+}
+
+const AddKeyPanel: React.FC<AddKeyPanelProps> = ({ refreshKeys }) => {
   const { role } = useRole();
 
   const [showForm, setShowForm] = useState(false);
@@ -82,6 +87,8 @@ const AddKeyPanel: React.FC = () => {
       setSuccess(`Created new key "${trimmedKey}" with ${quantity} at ${finalLockbox}.`);
     }
 
+    await refreshKeys();
+
     setKeyName("");
     setQuantity(1);
     setLockbox("");
@@ -116,6 +123,7 @@ const AddKeyPanel: React.FC = () => {
                 value={keyName}
                 onChange={(e) => setKeyName(e.target.value)}
                 fullWidth
+                sx={{ maxWidth: 140 }}
               />
             </Grid>
             <Grid item xs={12} sm={4} {...({} as any)}>
@@ -126,10 +134,11 @@ const AddKeyPanel: React.FC = () => {
                 value={quantity}
                 onChange={(e) => setQuantity(Number(e.target.value))}
                 fullWidth
+                sx={{ maxWidth: 80 }}
               />
             </Grid>
             <Grid item xs={12} sm={4} {...({} as any)}>
-              <FormControl fullWidth>
+             <FormControl fullWidth sx={{ minWidth: 200 }}>
                 <InputLabel>Lockbox</InputLabel>
                 <Select
                   value={lockbox}
