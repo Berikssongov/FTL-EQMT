@@ -13,24 +13,29 @@ import { collection, getDocs, query } from "firebase/firestore";
 import { db } from "../../firebase";
 import { KeyData, KeyLogEntry } from "../../types";
 import { Timestamp } from "firebase/firestore";
+import KeyTagEditorModal from "./KeyTagEditorModal";
+import { useRole } from "../../contexts/RoleContext";
 
 const KeySearchPanel: React.FC = () => {
   const [queryText, setQueryText] = useState("");
   const [loading, setLoading] = useState(false);
   const [matchedKeysByName, setMatchedKeysByName] = useState<KeyData[]>([]);
   const [matchedKeysByPerson, setMatchedKeysByPerson] = useState<KeyData[]>([]);
+  const [matchedKeysByTag, setMatchedKeysByTag] = useState<KeyData[]>([]);
   const [historyLogs, setHistoryLogs] = useState<(KeyLogEntry & { formattedDate: string })[]>([]);
-  const [noResults, setNoResults] = useState(false);
+  const [selectedKeyForTagEdit, setSelectedKeyForTagEdit] = useState<KeyData | null>(null);
+  const { superAdmin } = useRole();
 
-  const performSearch = async () => {
-    const trimmedQuery = queryText.trim();
+  const performSearch = async (searchTerm?: string) => {
+    const trimmedQuery = (searchTerm ?? queryText).trim();
     if (!trimmedQuery) return;
 
     setLoading(true);
-    setNoResults(false);
+    setMatchedKeysByTag([]);
+    setSelectedKeyForTagEdit(null);
+    setQueryText(trimmedQuery); // Make sure queryText always matches what's being searched
 
     try {
-      // Fetch keys
       const keysSnap = await getDocs(collection(db, "keys"));
       const keys: KeyData[] = keysSnap.docs.map((doc) => ({
         id: doc.id,
@@ -47,28 +52,33 @@ const KeySearchPanel: React.FC = () => {
       const matchedByPerson = keys.filter((k) => {
         const inHolders =
           Array.isArray(k.holders) &&
-          k.holders.some(
-            (h) => h?.type === "person" && h.name === trimmedQuery
-          );
+          k.holders.some((h) => h?.type === "person" && h.name === trimmedQuery);
         const inRestricted =
           k.isRestricted &&
           k.currentHolder?.type === "person" &&
           k.currentHolder?.name === trimmedQuery;
-
         return inHolders || inRestricted;
       });
       setMatchedKeysByPerson(matchedByPerson);
 
-      // Fetch logs
-      const logsSnap = await getDocs(query(collection(db, "keyLogs")));
-      const rawLogs = logsSnap.docs.map((doc) => doc.data() as KeyLogEntry & { timestamp: any });
+      const matchedByTag = keys.filter(
+        (k) =>
+          Array.isArray(k.tags) &&
+          k.tags.some((tag) => tag.toLowerCase().includes(trimmedQuery.toLowerCase()))
+      );
+      setMatchedKeysByTag(matchedByTag);
 
-      // Convert Firestore timestamp to formatted string and attach to each log entry
+      const logsSnap = await getDocs(query(collection(db, "keyLogs")));
+      const rawLogs = logsSnap.docs.map((doc) => doc.data() as KeyLogEntry & { timestamp: unknown });
       const logsWithFormattedDate = rawLogs.map((log) => {
         let formattedDate = "Unknown Date";
 
-        if (log.timestamp instanceof Timestamp) {
-          formattedDate = log.timestamp.toDate().toLocaleString(undefined, {
+        if (
+          typeof log.timestamp === "object" &&
+          log.timestamp !== null &&
+          typeof (log.timestamp as Timestamp).toDate === "function"
+        ) {
+          formattedDate = (log.timestamp as Timestamp).toDate().toLocaleString(undefined, {
             year: "numeric",
             month: "2-digit",
             day: "2-digit",
@@ -96,32 +106,24 @@ const KeySearchPanel: React.FC = () => {
         };
       });
 
-      // Filter logs by person or keyName matching query
       const matchedLogs = logsWithFormattedDate.filter(
         (log) => log.person === trimmedQuery || log.keyName === trimmedQuery
       );
-
-      // Sort logs by original timestamp descending (newest first)
       matchedLogs.sort((a, b) => {
-        const aTime = a.timestamp instanceof Timestamp ? a.timestamp.toMillis() : new Date(a.timestamp).getTime();
-        const bTime = b.timestamp instanceof Timestamp ? b.timestamp.toMillis() : new Date(b.timestamp).getTime();
+        const aTime = logTime(a.timestamp);
+        const bTime = logTime(b.timestamp);
         return bTime - aTime;
       });
-
       setHistoryLogs(matchedLogs);
-
-      if (
-        matchedByKey.length === 0 &&
-        matchedByPerson.length === 0 &&
-        matchedLogs.length === 0
-      ) {
-        setNoResults(true);
-      }
     } catch (error) {
       console.error("Search failed:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const logTime = (ts: Timestamp | string): number => {
+    return ts instanceof Timestamp ? ts.toMillis() : new Date(ts).getTime();
   };
 
   return (
@@ -131,7 +133,7 @@ const KeySearchPanel: React.FC = () => {
       </Typography>
       <Box display="flex" gap={2} mb={2}>
         <TextField
-          label="Enter key or person's name"
+          label="Enter key, person, or keyword"
           value={queryText}
           onChange={(e) => setQueryText(e.target.value)}
           fullWidth
@@ -139,15 +141,42 @@ const KeySearchPanel: React.FC = () => {
             if (e.key === "Enter") performSearch();
           }}
         />
-        <Button variant="contained" onClick={performSearch}>
+        <Button variant="contained" onClick={() => performSearch()}>
           Search
         </Button>
       </Box>
 
       {loading && <CircularProgress />}
 
-      {!loading && noResults && (
-        <Typography color="textSecondary">No matches found.</Typography>
+      {!loading && matchedKeysByTag.length > 0 && (
+        <Box>
+          <Typography variant="subtitle1" gutterBottom>
+            Keys matched by tag:
+          </Typography>
+          {matchedKeysByTag.map((key) => (
+            <Box
+              key={key.id}
+              sx={{
+                mb: 1,
+                p: 1,
+                border: "1px solid #ccc",
+                borderRadius: "8px",
+                cursor: "pointer",
+                "&:hover": { backgroundColor: "#f5f5f5" },
+              }}
+              onClick={() => performSearch(key.keyName)}
+            >
+              <Typography>
+                🔑 <strong>{key.keyName}</strong>
+              </Typography>
+              {key.tags && (
+                <Typography variant="body2" color="textSecondary">
+                  Tags: {key.tags.join(", ")}
+                </Typography>
+              )}
+            </Box>
+          ))}
+        </Box>
       )}
 
       {!loading && matchedKeysByName.length > 0 && (
@@ -156,14 +185,24 @@ const KeySearchPanel: React.FC = () => {
             Key Holders:
           </Typography>
           {matchedKeysByName.map((key) => {
-            const people =
-              key.holders?.filter((h) => h.type === "person") || [];
-            const lockboxes =
-              key.holders?.filter((h) => h.type === "lockbox") || [];
-
+            const people = key.holders?.filter((h) => h.type === "person") || [];
+            const lockboxes = key.holders?.filter((h) => h.type === "lockbox") || [];
             return (
               <Box key={key.id} sx={{ mb: 2 }}>
-                <Typography fontWeight="bold">{key.keyName}</Typography>
+                <Typography
+                  fontWeight="bold"
+                  sx={{
+                    cursor: superAdmin ? "pointer" : "default",
+                    "&:hover": superAdmin ? { textDecoration: "underline" } : {},
+                  }}
+                  onClick={() => {
+                    if (superAdmin && queryText.trim().toLowerCase() === key.keyName.toLowerCase()) {
+                      setSelectedKeyForTagEdit(key);
+                    }
+                  }}
+                >
+                  {key.keyName}
+                </Typography>
                 {key.isRestricted && key.currentHolder ? (
                   <Typography sx={{ whiteSpace: "pre-line" }}>
                     Held by: {key.currentHolder.name} ({key.currentHolder.type})
@@ -172,18 +211,14 @@ const KeySearchPanel: React.FC = () => {
                   <>
                     {people.length > 0 && (
                       <Typography sx={{ whiteSpace: "pre-line" }}>
-                        People:{"\n"}
-                        {people
-                          .map((h) => `${h.name} (x${h.quantity})`)
-                          .join(",\n")}
+                        People: {"\n"}
+                        {people.map((h) => `${h.name} (x${h.quantity})`).join(",\n")}
                       </Typography>
                     )}
                     {lockboxes.length > 0 && (
                       <Typography sx={{ whiteSpace: "pre-line", mt: 1 }}>
-                        Lockboxes:{"\n"}
-                        {lockboxes
-                          .map((h) => `${h.name} (x${h.quantity})`)
-                          .join(",\n")}
+                        Lockboxes: {"\n"}
+                        {lockboxes.map((h) => `${h.name} (x${h.quantity})`).join(",\n")}
                       </Typography>
                     )}
                     {people.length === 0 && lockboxes.length === 0 && (
@@ -205,17 +240,26 @@ const KeySearchPanel: React.FC = () => {
           </Typography>
           {matchedKeysByPerson.map((key) => {
             const matchingHolder =
-              key.holders?.find(
-                (h) => h.type === "person" && h.name === queryText
-              ) || key.currentHolder;
-
+              key.holders?.find((h) => h.type === "person" && h.name === queryText) ||
+              key.currentHolder;
             return (
               <Box key={key.id} sx={{ mb: 1 }}>
+                <Typography
+                  fontWeight="bold"
+                  sx={{
+                    cursor: superAdmin ? "pointer" : "default",
+                    "&:hover": superAdmin ? { textDecoration: "underline" } : {},
+                  }}
+                  onClick={() => {
+                    if (superAdmin && queryText.trim().toLowerCase() === key.keyName.toLowerCase()) {
+                      setSelectedKeyForTagEdit(key);
+                    }
+                  }}
+                >
+                  {key.keyName}
+                </Typography>
                 <Typography>
-                  <strong>{key.keyName}</strong>:{" "}
-                  {matchingHolder
-                    ? `Quantity: ${matchingHolder.quantity || 1}`
-                    : "Not found in holders"}
+                  Quantity: {matchingHolder?.quantity || 1}
                 </Typography>
               </Box>
             );
@@ -241,6 +285,15 @@ const KeySearchPanel: React.FC = () => {
           ))}
         </>
       )}
+
+      <KeyTagEditorModal
+        open={!!selectedKeyForTagEdit}
+        keyData={selectedKeyForTagEdit}
+        onClose={() => {
+          setSelectedKeyForTagEdit(null);
+          performSearch();
+        }}
+      />
     </Paper>
   );
 };

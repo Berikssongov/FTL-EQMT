@@ -142,6 +142,7 @@ export interface KeyData {
   isRestricted?: boolean;
   holders?: KeyHolder[];
   currentHolder?: KeyHolder;
+  tags?: string[];
 }
 
 export interface KeyLogEntry {
