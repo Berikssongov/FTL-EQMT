@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/Keys/KeySearchPanel.tsx
 import React, { useState } from "react";
 import {

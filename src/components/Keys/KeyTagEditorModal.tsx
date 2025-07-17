@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/Keys/KeyTagEditorModal.tsx
 import React, { useState, useEffect } from "react";
 import {
@@ -67,9 +68,11 @@ const KeyTagEditorModal: React.FC<Props> = ({ open, onClose, keyData }) => {
           value={tags}
           onChange={(e, newValue) => setTags(newValue)}
           renderTags={(value, getTagProps) =>
-            value.map((option, index) => (
-              <Chip variant="outlined" label={option} {...getTagProps({ index })} />
-            ))
+            value.map((option, index) => {
+              const props = getTagProps({ index });
+              return <Chip {...props} key={`key-tag-${option}-${index}`} label={option} />;
+            })
+            
           }
           renderInput={(params) => (
             <TextField {...params} label="Tags" placeholder="Add tag" />

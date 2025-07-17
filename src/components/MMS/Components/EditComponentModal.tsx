@@ -212,9 +212,11 @@ const EditComponentModal: React.FC<Props> = ({ open, onClose, onSave, component 
             value={tags}
             onChange={(_, newValue) => setTags(newValue)}
             renderTags={(value, getTagProps) =>
-              value.map((option, index) => (
-                <Chip label={option} {...getTagProps({ index })} />
-              ))
+              value.map((option, index) => {
+                const props = getTagProps({ index });
+                return <Chip {...props} key={`edit-component-tag-${option}-${index}`} label={option} />;
+              })
+              
             }
             renderInput={(params) => (
               <TextField {...params} label="Tags" placeholder="Edit tags" size="small" />

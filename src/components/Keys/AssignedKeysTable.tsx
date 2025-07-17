@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/Keys/AssignedKeysTable.tsx
 import React, { useEffect, useState } from "react";
 import { Paper, Typography } from "@mui/material";

@@ -14,7 +14,10 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   firstName: null,
   lastName: null,
-  logout: () => {},
+  logout: () => {
+    console.warn("Logout function not implemented.");
+  },
+    
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

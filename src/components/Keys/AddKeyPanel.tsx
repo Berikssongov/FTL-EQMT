@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/Keys/AddKeyPanel.tsx
 import React, { useState } from "react";
 import {

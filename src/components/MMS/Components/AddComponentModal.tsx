@@ -23,7 +23,6 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { db } from "../../../firebase";
-
 import { useRole } from "../../../contexts/RoleContext";
 
 interface Props {
@@ -35,18 +34,6 @@ interface Props {
 
 const AddComponentModal: React.FC<Props> = ({ open, onClose, onSaved, assetId }) => {
   const { role, loading: roleLoading } = useRole();
-
-  if (roleLoading) return <CircularProgress />;
-
-  if (role !== "admin") {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Typography variant="h6" color="error">
-          You do not have permission to add components. Only admins can do that.
-        </Typography>
-      </Box>
-    );
-  }
 
   const [name, setName] = useState("");
   const [type, setType] = useState("__unset__");
@@ -185,179 +172,170 @@ const AddComponentModal: React.FC<Props> = ({ open, onClose, onSaved, assetId })
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>Add Component</DialogTitle>
       <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          {error && (
+        {roleLoading ? (
+          <Box display="flex" justifyContent="center" py={3}>
+            <CircularProgress />
+          </Box>
+        ) : role !== "admin" ? (
+          <Box sx={{ p: 3 }}>
+            <Typography variant="h6" color="error">
+              You do not have permission to add components. Only admins can do that.
+            </Typography>
+          </Box>
+        ) : (
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {error && (
+              <TextField
+                value={error}
+                disabled
+                fullWidth
+                variant="outlined"
+                inputProps={{ style: { color: "red", fontWeight: "bold" } }}
+              />
+            )}
+
             <TextField
-              value={error}
-              disabled
+              label="Component Name *"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               fullWidth
-              variant="outlined"
-              inputProps={{ style: { color: "red", fontWeight: "bold" } }}
+              size="small"
             />
-          )}
 
-          <TextField
-            label="Component Name *"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            fullWidth
-            size="small"
-          />
-
-          <TextField
-            select
-            label="Location"
-            value={location}
-            onChange={(e) => {
-              const loc = e.target.value;
-              setLocation(loc);
-              setCategory("__unset__");
-              setType("__unset__");
-              setSelectedRoom("__unset__");
-            }}
-            fullWidth
-            size="small"
-          >
-            <MenuItem value="__unset__" disabled>
-              -- Select Location --
-            </MenuItem>
-            <MenuItem value="Exterior">Exterior</MenuItem>
-            <MenuItem value="Interior">Interior</MenuItem>
-          </TextField>
-
-          <TextField
-            select
-            label="Category"
-            value={category}
-            onChange={(e) => {
-              setCategory(e.target.value);
-              setType("__unset__");
-            }}
-            fullWidth
-            size="small"
-            disabled={location === "__unset__"}
-          >
-            <MenuItem value="__unset__" disabled>
-              -- Select Category --
-            </MenuItem>
-            {categoryOptions.map((cat) => (
-              <MenuItem key={cat} value={cat}>
-                {cat}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <TextField
-            select
-            label="Item Type"
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-            fullWidth
-            size="small"
-            disabled={category === "__unset__"}
-          >
-            <MenuItem value="__unset__" disabled>
-              -- Select Item Type --
-            </MenuItem>
-            {itemTypeOptions.map((it) => (
-              <MenuItem key={it} value={it}>
-                {it}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          {location === "Interior" && rooms.length > 0 && (
             <TextField
               select
-              label="Room"
-              value={selectedRoom}
-              onChange={(e) => setSelectedRoom(e.target.value)}
+              label="Location"
+              value={location}
+              onChange={(e) => {
+                const loc = e.target.value;
+                setLocation(loc);
+                setCategory("__unset__");
+                setType("__unset__");
+                setSelectedRoom("__unset__");
+              }}
               fullWidth
               size="small"
             >
-              <MenuItem value="__unset__" disabled>
-                -- Select Room --
-              </MenuItem>
-              {rooms.map((room) => (
-                <MenuItem key={room} value={room}>
-                  {room}
-                </MenuItem>
+              <MenuItem value="__unset__" disabled>-- Select Location --</MenuItem>
+              <MenuItem value="Exterior">Exterior</MenuItem>
+              <MenuItem value="Interior">Interior</MenuItem>
+            </TextField>
+
+            <TextField
+              select
+              label="Category"
+              value={category}
+              onChange={(e) => {
+                setCategory(e.target.value);
+                setType("__unset__");
+              }}
+              fullWidth
+              size="small"
+              disabled={location === "__unset__"}
+            >
+              <MenuItem value="__unset__" disabled>-- Select Category --</MenuItem>
+              {categoryOptions.map((cat) => (
+                <MenuItem key={cat} value={cat}>{cat}</MenuItem>
               ))}
             </TextField>
-          )}
 
-          {/* Temporary: Add Room Input */}
-          {location === "Interior" && (
-            <Stack direction="row" spacing={1} alignItems="center">
+            <TextField
+              select
+              label="Item Type"
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              fullWidth
+              size="small"
+              disabled={category === "__unset__"}
+            >
+              <MenuItem value="__unset__" disabled>-- Select Item Type --</MenuItem>
+              {itemTypeOptions.map((it) => (
+                <MenuItem key={it} value={it}>{it}</MenuItem>
+              ))}
+            </TextField>
+
+            {location === "Interior" && rooms.length > 0 && (
               <TextField
-                label="Add New Room"
-                value={newRoomName}
-                onChange={(e) => setNewRoomName(e.target.value)}
-                size="small"
+                select
+                label="Room"
+                value={selectedRoom}
+                onChange={(e) => setSelectedRoom(e.target.value)}
                 fullWidth
-              />
-              <Button onClick={handleAddRoom} variant="outlined">
-                Add Room
-              </Button>
-            </Stack>
-          )}
-
-          <TextField
-            select
-            label="Condition"
-            value={condition}
-            onChange={(e) => setCondition(e.target.value)}
-            fullWidth
-            size="small"
-          >
-            <MenuItem value="__unset__" disabled>
-              -- Select Condition --
-            </MenuItem>
-            {["Good", "Fair", "Poor"].map((cond) => (
-              <MenuItem key={cond} value={cond}>
-                {cond}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <TextField
-            select
-            label="Inspection Frequency"
-            value={frequency}
-            onChange={(e) => setFrequency(e.target.value)}
-            fullWidth
-            size="small"
-          >
-            <MenuItem value="__unset__" disabled>
-              -- Select Frequency --
-            </MenuItem>
-            {["monthly", "quarterly", "yearly", "five Year"].map((opt) => (
-              <MenuItem key={opt} value={opt}>
-                {opt.charAt(0).toUpperCase() + opt.slice(1)}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <Autocomplete
-            multiple
-            freeSolo
-            options={[]} // Can prefill common tags later
-            value={tags}
-            onChange={(_, newValue) => setTags(newValue)}
-            renderTags={(value, getTagProps) =>
-              value.map((option, index) => (
-                <Chip label={option} {...getTagProps({ index })} />
-              ))
-            }
-            renderInput={(params) => (
-              <TextField {...params} label="Tags" placeholder="Add tags" size="small" />
+                size="small"
+              >
+                <MenuItem value="__unset__" disabled>-- Select Room --</MenuItem>
+                {rooms.map((room) => (
+                  <MenuItem key={room} value={room}>{room}</MenuItem>
+                ))}
+              </TextField>
             )}
-          />
-        </Stack>
+
+            {location === "Interior" && (
+              <Stack direction="row" spacing={1} alignItems="center">
+                <TextField
+                  label="Add New Room"
+                  value={newRoomName}
+                  onChange={(e) => setNewRoomName(e.target.value)}
+                  size="small"
+                  fullWidth
+                />
+                <Button onClick={handleAddRoom} variant="outlined">
+                  Add Room
+                </Button>
+              </Stack>
+            )}
+
+            <TextField
+              select
+              label="Condition"
+              value={condition}
+              onChange={(e) => setCondition(e.target.value)}
+              fullWidth
+              size="small"
+            >
+              <MenuItem value="__unset__" disabled>-- Select Condition --</MenuItem>
+              {["Good", "Fair", "Poor"].map((cond) => (
+                <MenuItem key={cond} value={cond}>{cond}</MenuItem>
+              ))}
+            </TextField>
+
+            <TextField
+              select
+              label="Inspection Frequency"
+              value={frequency}
+              onChange={(e) => setFrequency(e.target.value)}
+              fullWidth
+              size="small"
+            >
+              <MenuItem value="__unset__" disabled>-- Select Frequency --</MenuItem>
+              {["monthly", "quarterly", "yearly", "five Year"].map((opt) => (
+                <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+              ))}
+            </TextField>
+
+            <Autocomplete
+              multiple
+              freeSolo
+              options={[]} // Add suggestions later
+              value={tags}
+              onChange={(_, newValue) => setTags(newValue)}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => {
+                  const props = getTagProps({ index });
+                  return <Chip {...props} key={`add-component-tag-${option}-${index}`} label={option} />;
+                })
+                
+              }
+              renderInput={(params) => (
+                <TextField {...params} label="Tags" placeholder="Add tags" size="small" />
+              )}
+            />
+          </Stack>
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSubmit} variant="contained">
+        <Button onClick={handleSubmit} variant="contained" disabled={role !== "admin"}>
           Save
         </Button>
       </DialogActions>

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/AddServiceModal.tsx
 import React, { useState } from "react";
 import {

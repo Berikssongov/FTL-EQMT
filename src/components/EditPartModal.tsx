@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/EditPartModal.tsx
 import React, { useEffect, useState } from "react";
 import {

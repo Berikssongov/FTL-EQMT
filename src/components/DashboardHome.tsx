@@ -1,19 +1,19 @@
+// src/components/DashboardHome.tsx
 import React, { useEffect, useState } from "react";
 import {
   Box,
   Card,
   CardContent,
   Typography,
+  IconButton,
+  useTheme,
   Grid,
-  Divider,
+  Switch,
   List,
   ListItem,
   ListItemText,
-  Button,
-  IconButton,
-  Stack,
-  Link,
   TextField,
+  Button,
 } from "@mui/material";
 import {
   VpnKey,
@@ -22,12 +22,9 @@ import {
   Warning,
   Handyman,
   Power,
-  AddCircleOutline,
-  InfoOutlined,
   Delete as DeleteIcon,
 } from "@mui/icons-material";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { collection, doc, getDocs, updateDoc } from "firebase/firestore";
+import { getDocs, collection, updateDoc, doc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useRole } from "../contexts/RoleContext";
 
@@ -43,368 +40,228 @@ interface CustomTile {
   items: string[];
 }
 
-interface Finding {
-  id: string;
-  componentName: string;
-  assetName: string;
-  date: string;
-  resolved?: boolean;
-}
+const DashboardHome = () => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const { role } = useRole();
+  const isAdmin = role === "admin";
 
-const StatCard = ({
-  title,
-  value,
-  icon,
-  color,
-}: {
-  title: string;
-  value: number | string;
-  icon: React.ReactNode;
-  color: string;
-}) => (
-  <Card elevation={3} sx={{ minWidth: 180, borderLeft: `6px solid ${color}` }}>
-    <CardContent>
-      <Box display="flex" alignItems="center" gap={2}>
-        <Box color={color}>{icon}</Box>
-        <Box>
-          <Typography variant="subtitle2" color="text.secondary">
-            {title}
-          </Typography>
-          <Typography variant="h5" fontWeight="bold">
-            {value}
-          </Typography>
-        </Box>
-      </Box>
-    </CardContent>
-  </Card>
-);
-
-const DashboardHome: React.FC = () => {
   const [assignedKeysCount, setAssignedKeysCount] = useState(0);
   const [lockboxKeysCount, setLockboxKeysCount] = useState(0);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [handToolCount, setHandToolCount] = useState(0);
   const [powerToolCount, setPowerToolCount] = useState(0);
   const [dashboardTiles, setDashboardTiles] = useState<CustomTile[]>([]);
-  const navigate = useNavigate();
-  const { role } = useRole();
-  const [findings, setFindings] = useState<Finding[]>([]);
-  const [componentsWithFindings, setComponentsWithFindings] = useState<any[]>([]);
+
+  const fetchData = async () => {
+    const [
+      assignedSnap,
+      lockboxSnap,
+      equipmentSnap,
+      handToolsSnap,
+      powerToolsSnap,
+      tilesSnap,
+    ] = await Promise.all([
+      getDocs(collection(db, "assignedKeys")),
+      getDocs(collection(db, "lockboxKeys")),
+      getDocs(collection(db, "equipment")),
+      getDocs(collection(db, "handTools")),
+      getDocs(collection(db, "powerTools")),
+      getDocs(collection(db, "dashboardTiles")),
+    ]);
+
+    setAssignedKeysCount(assignedSnap.size);
+    setLockboxKeysCount(lockboxSnap.size);
+    setEquipment(
+      equipmentSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<Equipment, "id">),
+      }))
+    );
+    setHandToolCount(handToolsSnap.size);
+    setPowerToolCount(powerToolsSnap.size);
+    setDashboardTiles(
+      tilesSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<CustomTile, "id">),
+      }))
+    );
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      const assignedSnap = await getDocs(collection(db, "assignedKeys"));
-      const lockboxSnap = await getDocs(collection(db, "lockboxKeys"));
-      const equipmentSnap = await getDocs(collection(db, "equipment"));
-      const handToolsSnap = await getDocs(collection(db, "handTools"));
-      const powerToolsSnap = await getDocs(collection(db, "powerTools"));
-      const tilesSnap = await getDocs(collection(db, "dashboardTiles"));
-      const findingsSnap = await getDocs(collection(db, "findings"));
-      const componentsSnap = await getDocs(collection(db, "components"));
-
-const allComponents = componentsSnap.docs.map((doc) => ({
-  id: doc.id,
-  ...(doc.data() as any),
-}));
-
-console.log("✅ All components from Firestore:", allComponents);
-
-const componentsWithIssues = allComponents.filter((component) => {
-  const findings = component.inspection?.findings;
-  const status = component.inspection?.status?.toLowerCase?.() || "";
-
-  const hasFindings = Array.isArray(findings) && findings.length > 0;
-  const isUnresolved = status === "no";
-
-  return hasFindings && isUnresolved;
-
-});
-
-allComponents.forEach((component) => {
-  console.log(
-    "Component:",
-    component.name,
-    "Status:",
-    component.inspection?.status,
-    "Findings:",
-    component.inspection?.findings
-  );
-});
-
-
-
-console.log("✅ Filtered componentsWithIssues:", componentsWithIssues);
-setComponentsWithFindings(componentsWithIssues);
-
-
-
-     
-      setAssignedKeysCount(assignedSnap.size);
-      setLockboxKeysCount(lockboxSnap.size);
-      setEquipment(
-        equipmentSnap.docs.map((doc) => ({
-          id: doc.id,
-          ...(doc.data() as Omit<Equipment, "id">),
-        }))
-      );
-      setHandToolCount(handToolsSnap.size);
-      setPowerToolCount(powerToolsSnap.size);
-      setDashboardTiles(
-        tilesSnap.docs.map((doc) => ({
-          id: doc.id,
-          ...(doc.data() as Omit<CustomTile, "id">),
-        }))
-      );
-    };
-
     fetchData();
   }, []);
 
-  const brokenEquipment = equipment.filter(
-    (e) =>
-      e.condition?.toLowerCase().includes("broken") ||
-      e.condition?.toLowerCase().includes("out of service")
+  const brokenEquipment = equipment.filter((e) =>
+    ["broken", "out of service"].some((t) => e.condition?.toLowerCase().includes(t))
   );
 
-  const quickInsights = [
-    brokenEquipment.length > 0
-      ? `${brokenEquipment.length} equipment items are out of service.`
-      : "All equipment is currently operational.",
-    handToolCount < 10
-      ? "Low hand tool inventory—consider restocking."
-      : "Hand tool inventory is healthy.",
-    powerToolCount > 50
-      ? "Power tool usage is high—monitor maintenance schedules."
-      : "Power tool count is within normal range.",
-  ];
+  const handleAddItem = (tileId: string) => async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const newItem = (form.newItem as HTMLInputElement).value.trim();
+    if (!newItem) return;
 
-  const handleAddItem = async (tileId: string, newItem: string) => {
     const tile = dashboardTiles.find((t) => t.id === tileId);
     if (!tile) return;
 
-    const newItems = [...tile.items, newItem];
-    await updateDoc(doc(db, "dashboardTiles", tileId), { items: newItems });
+    const updatedItems = [...tile.items, newItem];
+    await updateDoc(doc(db, "dashboardTiles", tileId), { items: updatedItems });
 
     setDashboardTiles((prev) =>
-      prev.map((t) => (t.id === tileId ? { ...t, items: newItems } : t))
+      prev.map((t) => (t.id === tileId ? { ...t, items: updatedItems } : t))
     );
+
+    form.reset();
   };
 
-  const handleRemoveItem = async (tileId: string, itemIdx: number) => {
+  const handleRemoveItem = async (tileId: string, index: number) => {
     const tile = dashboardTiles.find((t) => t.id === tileId);
     if (!tile) return;
 
-    const newItems = tile.items.filter((_, i) => i !== itemIdx);
-    await updateDoc(doc(db, "dashboardTiles", tileId), { items: newItems });
+    const updatedItems = tile.items.filter((_, i) => i !== index);
+    await updateDoc(doc(db, "dashboardTiles", tileId), { items: updatedItems });
 
     setDashboardTiles((prev) =>
-      prev.map((t) => (t.id === tileId ? { ...t, items: newItems } : t))
+      prev.map((t) => (t.id === tileId ? { ...t, items: updatedItems } : t))
     );
   };
+
+  const priorityList = dashboardTiles.find((t) => t.id === "priorityList");
+  const ongoingTasks = dashboardTiles.find((t) => t.id === "ongoingtasks");
 
   return (
-    <Box sx={{ px: 4, py: 3 }}>
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        Dashboard
-      </Typography>
+    <Box sx={{ p: 2, display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "3fr 1fr" } }}>
+      {/* Stats Tiles */}
+      <Box
+        sx={{
+          display: "grid",
+          gap: 2,
+          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(4, 1fr)" },
+        }}
+      >
+        {[
+          { icon: <VpnKey />, label: assignedKeysCount, sub: "ASSIGNED KEYS" },
+          { icon: <Build />, label: lockboxKeysCount, sub: "LOCKBOX KEYS" },
+          { icon: <Construction />, label: equipment.length, sub: "TOTAL EQUIPMENT" },
+          { icon: <Warning />, label: brokenEquipment.length, sub: "OUT OF SERVICE" },
+          { icon: <Handyman />, label: handToolCount, sub: "HAND TOOLS" },
+          { icon: <Power />, label: powerToolCount, sub: "POWER TOOLS" },
+          { icon: <Build />, label: "21°C", sub: "WEATHER" },
+          { icon: <Build />, label: "10000%", sub: "BUDGET USED" },
+        ].map((item, idx) => (
+          <Card key={idx} sx={{ display: "flex", alignItems: "center", px: 2, py: 1.5 }}>
+            <Box sx={{ mr: 2 }}>{item.icon}</Box>
+            <Box>
+              <Typography variant="h6">{item.label}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {item.sub}
+              </Typography>
+            </Box>
+          </Card>
+        ))}
+      </Box>
 
-      {/* Top Row: Stat Cards (3x2) + Quick Insights */}
-<Grid container spacing={3} sx={{ mb: 4 }}>
-  {/* Stat Cards container (3 columns x 2 rows) */}
-  <Grid item xs={12} md={8} {...({} as any)}>
-    <Grid container spacing={2}>
-      {[
-        { title: "Assigned Keys", value: assignedKeysCount, icon: <VpnKey />, color: "#2b4635" },
-        { title: "Lockbox Keys", value: lockboxKeysCount, icon: <Build />, color: "#4e6e58" },
-        { title: "Total Equipment", value: equipment.length, icon: <Construction />, color: "#7a9e7e" },
-        { title: "Out of Service", value: brokenEquipment.length, icon: <Warning />, color: "#c62828" },
-        { title: "Hand Tools", value: handToolCount, icon: <Handyman />, color: "#6d4c41" },
-        { title: "Power Tools", value: powerToolCount, icon: <Power />, color: "#283593" },
-      ].map((stat, idx) => (
-        <Grid item xs={12} sm={6} md={4} key={idx} {...({} as any)}>
-          <StatCard {...stat} />
-        </Grid>
-      ))}
-    </Grid>
-  </Grid>
+      {/* Right Sidebar */}
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <Card sx={{ bgcolor: "#2196f3", color: "white" }}>
+          <CardContent>
+            <Typography variant="h6">Elevators Status</Typography>
+            <Typography variant="body1">Operations - Functioning</Typography>
+            <Typography variant="body1">Big House - Non-Funcitoning </Typography>
+            <Typography variant="body2">Contracting In Progress</Typography>
+          </CardContent>
+        </Card>
+        <Card sx={{ bgcolor: "#4caf50", color: "white" }}>
+          <CardContent>
+            <Typography variant="h6">Current Weekend Assigned</Typography>
+            <Typography variant="body1">July 19 (Patrick)</Typography>
+            <Typography variant="body1">July 20 (Frank)</Typography>
+            <Typography variant="body2">Remain Weekends: 7</Typography>
+          </CardContent>
+        </Card>
+      </Box>
 
-  {/* Quick Insights */}
-  <Grid item xs={12} md={4} {...({} as any)}>
-    <Card elevation={2}>
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          <InfoOutlined sx={{ mr: 1 }} />
-          Quick Insights
-        </Typography>
-        <Divider sx={{ mb: 1 }} />
-        <List dense>
-          {quickInsights.map((insight, idx) => (
-            <ListItem key={idx}>
-              <ListItemText primary={insight} />
-            </ListItem>
-          ))}
-        </List>
-      </CardContent>
-    </Card>
-  </Grid>
-</Grid>
-
-
-      {/* Second Row */}
-      <Grid container spacing={3}>
-        {/* Findings */}
-        <Grid item xs={12} md={4} {...({} as any)}>
-        <Card elevation={2}>
+      {/* Charts Replaced with Custom Tiles */}
+      <Box sx={{ gridColumn: "1 / -1", display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, mt: 1 }}>
+      {priorityList && (
+  <Card>
     <CardContent>
-      <Typography variant="h6" gutterBottom>
-        Findings Requiring Attention
+      <Typography variant="h6" sx={{ mb: 1 }}>
+        {priorityList.title}
       </Typography>
-      <Divider sx={{ mb: 1 }} />
-      {componentsWithFindings.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          No outstanding findings.
-        </Typography>
-      ) : (
-        <List dense>
-  {componentsWithFindings.map((comp) => (
-    <ListItem
-      key={comp.id}
-      component={RouterLink}
-      to={`/components/${comp.id}`}
-      sx={{ display: "block", cursor: "pointer" }}
-    >
-      <ListItemText
-        primary={`${comp.name || "Unnamed Component"} — ${comp.room ?? "Unknown Room"}`}
-        secondary={
-          comp.inspection?.findings?.length > 0
-            ? comp.inspection.findings.map((f: string) => `• ${f}`).join("\n")
-            : "No findings listed"
-        }
-      />
-    </ListItem>
-  ))}
-</List>
-
+      <List dense disablePadding>
+        {priorityList.items.map((item, idx) => (
+          <ListItem
+            key={idx}
+            disableGutters
+            sx={{ py: 0 }}
+            secondaryAction={
+              isAdmin && (
+                <IconButton edge="end" onClick={() => handleRemoveItem(priorityList.id, idx)}>
+                  <DeleteIcon />
+                </IconButton>
+              )
+            }
+          >
+            <ListItemText primary={item} />
+          </ListItem>
+        ))}
+      </List>
+      {isAdmin && (
+        <Box component="form" onSubmit={handleAddItem(priorityList.id)} mt={1}>
+          <TextField name="newItem" size="small" placeholder="Add priority" fullWidth />
+          <Button type="submit" variant="contained" size="small" sx={{ mt: 1 }}>
+            Add
+          </Button>
+        </Box>
       )}
     </CardContent>
   </Card>
-</Grid>
+      )}
 
+{ongoingTasks && (
+  <Card>
+    <CardContent>
+      <Typography variant="h6" sx={{ mb: 1 }}>
+        {ongoingTasks.title}
+      </Typography>
+      <List dense disablePadding>
+        {ongoingTasks.items.map((item, idx) => (
+          <ListItem
+            key={idx}
+            disableGutters
+            sx={{ py: 0 }}
+            secondaryAction={
+              isAdmin && (
+                <IconButton edge="end" onClick={() => handleRemoveItem(ongoingTasks.id, idx)}>
+                  <DeleteIcon />
+                </IconButton>
+              )
+            }
+          >
+            <ListItemText primary={item} />
+          </ListItem>
+        ))}
+      </List>
+      {isAdmin && (
+        <Box component="form" onSubmit={handleAddItem(ongoingTasks.id)} mt={1}>
+          <TextField name="newItem" size="small" placeholder="Add task" fullWidth />
+          <Button type="submit" variant="contained" size="small" sx={{ mt: 1 }}>
+            Add
+                </Button>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+)}
+</Box>
 
-
-        {/* Out of Service Equipment */}
-        <Grid item xs={12} md={4} {...({} as any)}>
-          <Card elevation={2}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Out of Service Equipment
-              </Typography>
-              <Divider sx={{ mb: 1 }} />
-              {brokenEquipment.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  All equipment is currently in service.
-                </Typography>
-              ) : (
-                <List dense>
-                  {brokenEquipment.map((item) => (
-                    <ListItem key={item.id} disablePadding>
-                      <ListItemText
-                        primary={
-                          <Link
-                            component={RouterLink}
-                            to={`/equipment/${item.id}`}
-                            underline="hover"
-                            color="inherit"
-                          >
-                            {item.name}
-                          </Link>
-                        }
-                        secondary={`Condition: ${item.condition}`}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Tile Lists: Side-by-side */}
-<Grid item xs={12} md={4} {...({} as any)}></Grid>
-  <Grid container spacing={2}>
-    {["priorityList", "ongoingtasks"].map((tileId) => {
-      const tile = dashboardTiles.find((t) => t.id === tileId);
-      if (!tile) return null;
-
-      return (
-        <Grid item xs={12} sm={6} key={tile.id} {...({} as any)}>
-          <Card elevation={2}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                {tile.title}
-              </Typography>
-              <Divider sx={{ mb: 1 }} />
-              {tile.items.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No items added yet.
-                </Typography>
-              ) : (
-                <List dense>
-                  {tile.items.map((item, idx) => (
-                    <ListItem
-                      key={idx}
-                      secondaryAction={
-                        role === "admin" && (
-                          <IconButton
-                            edge="end"
-                            aria-label="delete"
-                            onClick={() => handleRemoveItem(tile.id, idx)}
-                          >
-                            <DeleteIcon color="error" />
-                          </IconButton>
-                        )
-                      }
-                    >
-                      <ListItemText primary={item} />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
-
-              {role === "admin" && (
-                <Box
-                  component="form"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const form = e.target as typeof e.target & {
-                      newItem: { value: string };
-                    };
-                    const newItem = form.newItem.value.trim();
-                    if (!newItem) return;
-                    handleAddItem(tile.id, newItem);
-                    form.newItem.value = "";
-                  }}
-                  sx={{ display: "flex", gap: 1, mt: 2 }}
-                >
-                  <TextField
-                    name="newItem"
-                    size="small"
-                    placeholder="Enter new item"
-                    fullWidth
-                  />
-                  <Button type="submit" variant="contained" size="small">
-                    Add
-                  </Button>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-      );
-    })}
-  </Grid>
-</Grid>
-
+      {/* Light/Dark Toggle Placeholder */}
+      <Box sx={{ position: "fixed", top: 80, right: 20 }}>
+        <Typography variant="caption">Dark Mode</Typography>
+        <Switch checked={isDark} disabled />
+      </Box>
     </Box>
   );
 };

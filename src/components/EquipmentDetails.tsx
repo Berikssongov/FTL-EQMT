@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Your existing imports
 import React, { useEffect, useState } from "react";
 import {
