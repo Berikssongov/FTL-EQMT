@@ -12,7 +12,6 @@ import {
   InputLabel,
   Select,
   Grid,
-  SelectChangeEvent,
 } from "@mui/material";
 import { doc, updateDoc, Timestamp, setDoc } from "firebase/firestore";
 import { db } from "../../firebase";
@@ -59,21 +58,110 @@ const KeyFormPanel: React.FC<KeyFormPanelProps> = ({ keys, refreshKeys }) => {
       return;
     }
 
-    const key = keys.find((k) => k.keyName === keyName && !k.isRestricted);
+    const key = keys.find((k) => k.keyName === keyName);
     if (!key) {
       setError("Key not found.");
       return;
     }
 
+    const holderName = action === "Signing Out" ? person : resolvedLockbox;
+    const holderType = action === "Signing Out" ? "person" : "lockbox";
+    const fromName = action === "Signing Out" ? resolvedLockbox : person;
+    const fromType = action === "Signing Out" ? "lockbox" : "person";
+
+    // Handle restricted keys
+    if (key.isRestricted) {
+      const currentHolder = key.currentHolder;
+
+      if (action === "Signing Out") {
+        if (!currentHolder || (currentHolder.type === "lockbox" && currentHolder.name.toLowerCase() === resolvedLockbox.toLowerCase())) {
+          const updatedKey = {
+            currentHolder: {
+              type: "person",
+              name: person,
+            },
+          };
+
+          try {
+            await updateDoc(doc(db, "keys", key.id), updatedKey);
+
+            await setDoc(doc(db, "keyLogs", `${Date.now()}_${keyName}`), {
+              keyName,
+              action,
+              person,
+              lockbox: resolvedLockbox,
+              timestamp: Timestamp.now(),
+              submittedBy: user?.displayName || "Unknown",
+            });
+
+            setSuccess(`${keyName} signed out to ${person}`);
+            setKeyName("");
+            setPerson("");
+            setLockbox("");
+            setCustomLockbox("");
+            setQuantity(1);
+            await refreshKeys();
+            return;
+          } catch (err) {
+            console.error(err);
+            setError("Failed to update Firestore.");
+            return;
+          }
+        } else {
+          setError(`Key is currently held by ${currentHolder.name}`);
+          return;
+        }
+      } else {
+        if (!currentHolder || (currentHolder.type === "person" && currentHolder.name.toLowerCase() === person.toLowerCase())) {
+          const updatedKey = {
+            currentHolder: {
+              type: "lockbox",
+              name: resolvedLockbox,
+            },
+          };
+
+          try {
+            await updateDoc(doc(db, "keys", key.id), updatedKey);
+
+            await setDoc(doc(db, "keyLogs", `${Date.now()}_${keyName}`), {
+              keyName,
+              action,
+              person,
+              lockbox: resolvedLockbox,
+              timestamp: Timestamp.now(),
+              submittedBy: user?.displayName || "Unknown",
+            });
+
+            setSuccess(`${keyName} returned to ${resolvedLockbox}`);
+            setKeyName("");
+            setPerson("");
+            setLockbox("");
+            setCustomLockbox("");
+            setQuantity(1);
+            await refreshKeys();
+            return;
+          } catch (err) {
+            console.error(err);
+            setError("Failed to update Firestore.");
+            return;
+          }
+        } else {
+          setError(`Key is not currently signed out to ${person}`);
+          return;
+        }
+      }
+    }
+
+    // Non-restricted key logic
     const holder: KeyHolder = {
-      type: action === "Signing Out" ? "person" : "lockbox",
-      name: action === "Signing Out" ? person : resolvedLockbox,
+      type: holderType,
+      name: holderName,
       quantity,
     };
 
     const oppositeHolder = {
-      type: action === "Signing Out" ? "lockbox" : "person",
-      name: action === "Signing Out" ? resolvedLockbox : person,
+      type: fromType,
+      name: fromName,
     };
 
     const existing: KeyHolder[] = key.holders ? [...key.holders] : [];
@@ -176,10 +264,12 @@ const KeyFormPanel: React.FC<KeyFormPanelProps> = ({ keys, refreshKeys }) => {
                 onChange={(e) => setKeyName(e.target.value)}
                 sx={{ minWidth: 140, flexGrow: 1 }}
               >
-                {keys.map((k) => (
-                  <MenuItem key={k.id} value={k.keyName}>
-                    {k.keyName}
-                  </MenuItem>
+                {[...keys]
+                  .sort((a, b) => a.keyName.localeCompare(b.keyName))
+                  .map((k) => (
+                    <MenuItem key={k.id} value={k.keyName}>
+                      {k.keyName}
+                    </MenuItem>
                 ))}
               </Select>
             </FormControl>
