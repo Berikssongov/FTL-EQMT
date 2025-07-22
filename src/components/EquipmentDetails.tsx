@@ -1,27 +1,40 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// Your existing imports
 import React, { useEffect, useState } from "react";
 import {
   Typography,
   Paper,
   Box,
-  Grid,
   IconButton,
-  Divider,
   CircularProgress,
   Button,
+  Card,
+  CardContent,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  TextField,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
+import FactCheckIcon from "@mui/icons-material/FactCheck";
+import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import { useParams, useNavigate } from "react-router-dom";
-import { Equipment, EquipmentServiceRecord, EquipmentPart } from "../types";
-import { getEquipmentById } from "../services/equipmentServices";
+import {
+  Equipment,
+  EquipmentServiceRecord,
+  EquipmentPart,
+  EquipmentInspection,
+  User,
+} from "../types";
+
+import { getEquipmentById, updateEquipment } from "../services/equipmentServices";
 import { fetchServiceRecordsByEquipmentId } from "../services/serviceRecordsService";
 import { fetchPartRecordsByEquipmentId } from "../services/partsRecordsService";
+import { getAllUsers } from "../services/userService";
 
 import EquipmentEditModal from "./EquipmentEditModal";
 import AddServiceModal from "./AddServiceModal";
 import AddPartModal from "./AddPartModal";
-
 import { useRole } from "../contexts/RoleContext";
 
 const EquipmentDetails: React.FC = () => {
@@ -32,11 +45,12 @@ const EquipmentDetails: React.FC = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [serviceOpen, setServiceOpen] = useState(false);
   const [partOpen, setPartOpen] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
   const [services, setServices] = useState<EquipmentServiceRecord[]>([]);
   const [parts, setParts] = useState<EquipmentPart[]>([]);
-  const { role, loading: roleLoading } = useRole(); // ✅ roleLoading added
+  const { role, loading: roleLoading } = useRole();
 
-  const canEditEquipment = role === "admin";
+  const canEdit = role === "admin";
   const canAddServiceOrParts = role === "admin" || role === "manager";
 
   const loadEquipment = async (equipmentId: string) => {
@@ -71,24 +85,92 @@ const EquipmentDetails: React.FC = () => {
     setParts(formatted);
   };
 
+  const loadUsers = async () => {
+    const data = await getAllUsers();
+    setUsers(data || []);
+  };
+
   const reloadAll = () => {
     if (id) {
       loadEquipment(id);
       loadServices(id);
       loadParts(id);
+      loadUsers();
     }
   };
 
   useEffect(() => {
-    if (!roleLoading && id && role) {
-      loadEquipment(id);
-      loadServices(id);
-      loadParts(id);
+    if (id && !roleLoading) {
+      reloadAll();
     }
-  }, [id, role, roleLoading]);
+  }, [id, roleLoading]);
 
-  if (roleLoading || loading) return <CircularProgress />;
+  if (loading || roleLoading) return <CircularProgress />;
   if (!equipment) return <Typography>Equipment not found.</Typography>;
+
+  const assignedUser = users.find((u) => u.id === equipment.assignedTo);
+  const inspection = equipment.inspection;
+
+  const inspectionStatus = inspection?.status?.toLowerCase() ?? "unknown";
+const hasFindings = !!(
+  inspection &&
+  Array.isArray(inspection.findings) &&
+  inspection.findings.length > 0
+);
+
+
+  let inspectionLabel = "Not Inspected";
+  let inspectionColor:
+    | "success"
+    | "warning"
+    | "error"
+    | "disabled"
+    | "action"
+    | "inherit"
+    | "primary"
+    | "secondary"
+    | "info"
+    | undefined = "disabled";
+
+  if (inspectionStatus === "pass") {
+    inspectionLabel = "Passed Inspection";
+    inspectionColor = "success";
+  } else if (inspectionStatus === "fail") {
+    inspectionLabel = "Needs Attention";
+    inspectionColor = "error";
+  } else if (inspectionStatus === "no" || hasFindings) {
+    inspectionLabel = "Findings Reported";
+    inspectionColor = "warning";
+  }
+
+  const handleAssignChange = async (value: string) => {
+    if (!canEdit || !equipment?.id) return;
+    await updateEquipment(equipment.id, { ...equipment, assignedTo: value });
+    reloadAll();
+  };
+
+  const handleInspectionChange = async (
+    field: "status" | "findings",
+    value: string
+  ) => {
+    if (!canEdit || !equipment?.id) return;
+
+    const updatedInspection: EquipmentInspection = {
+      status: field === "status" ? value : inspection?.status || "",
+      findings:
+        field === "findings"
+          ? value.split(",").map((f) => f.trim()).filter(Boolean)
+          : inspection?.findings || [],
+    };
+
+    await updateEquipment(equipment.id, {
+      ...equipment,
+      inspection: updatedInspection,
+      lastInspection: new Date().toISOString(),
+    });
+
+    reloadAll();
+  };
 
   return (
     <Box>
@@ -97,81 +179,130 @@ const EquipmentDetails: React.FC = () => {
       </Button>
 
       <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h5" fontWeight={600}>
             {equipment.name}
           </Typography>
-          {canEditEquipment && (
+          {canEdit && (
             <IconButton onClick={() => setEditOpen(true)} color="primary">
               <EditIcon />
             </IconButton>
           )}
         </Box>
 
-        <Grid container spacing={2} {...({} as any)}>
-          <Grid item xs={12} md={6} {...({} as any)}>
-            <Typography><strong>Category:</strong> {equipment.category}</Typography>
-            <Typography><strong>Make:</strong> {equipment.make}</Typography>
-            <Typography><strong>Model #:</strong> {equipment.modelNumber}</Typography>
-            <Typography><strong>Serial #:</strong> {equipment.serialNumber}</Typography>
-            <Typography><strong>Status:</strong> {equipment.status}</Typography>
-            <Typography><strong>Condition:</strong> {equipment.condition}</Typography>
-            <Typography><strong>Location:</strong> {equipment.location}</Typography>
-          </Grid>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
+          {/* Assigned To */}
+          <Card sx={{ minWidth: 200 }}>
+            <CardContent>
+              <Box display="flex" alignItems="center" gap={1}>
+                <AssignmentIndIcon color="info" />
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Assigned To
+                  </Typography>
+                  {canEdit ? (
+                    <FormControl fullWidth size="small">
+                      <Select
+                        value={equipment.assignedTo || ""}
+                        onChange={(e) => handleAssignChange(e.target.value)}
+                      >
+                        <MenuItem value="">Unassigned</MenuItem>
+                        {users.map((user) => (
+                          <MenuItem key={user.id} value={user.id}>
+                            {user.firstName} {user.lastName}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <Typography variant="h6">
+                      {assignedUser
+                        ? `${assignedUser.firstName} ${assignedUser.lastName}`
+                        : "Unassigned"}
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
 
-          <Grid item xs={12} md={6} {...({} as any)}>
-            {equipment.legal && (equipment.legal.licensePlate || equipment.legal.insuranceInfo) && (
-              <>
-                <Typography variant="subtitle1" fontWeight={600} sx={{ mt: 1 }}>
-                  Legal Information
-                </Typography>
-                {equipment.legal.licensePlate && (
-                  <Typography><strong>License Plate:</strong> {equipment.legal.licensePlate}</Typography>
-                )}
-                {equipment.legal.insuranceInfo && (
-                  <Typography><strong>Insurance Info:</strong> {equipment.legal.insuranceInfo}</Typography>
-                )}
-              </>
-            )}
+          {/* Inspection */}
+          <Card sx={{ minWidth: 200 }}>
+            <CardContent>
+              <Box display="flex" alignItems="center" gap={1}>
+                <FactCheckIcon color={inspectionColor} />
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Inspection
+                  </Typography>
+                  {canEdit ? (
+                    <>
+                      <FormControl fullWidth size="small" sx={{ mt: 0.5 }}>
+                        <InputLabel>Status</InputLabel>
+                        <Select
+                          value={inspection?.status || ""}
+                          onChange={(e) =>
+                            handleInspectionChange("status", e.target.value)
+                          }
+                          label="Status"
+                        >
+                          <MenuItem value="pass">Pass</MenuItem>
+                          <MenuItem value="fail">Fail</MenuItem>
+                          <MenuItem value="no">Not Inspected</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <TextField
+                        label="Findings"
+                        placeholder="comma-separated"
+                        size="small"
+                        fullWidth
+                        sx={{ mt: 1 }}
+                        value={inspection?.findings?.join(", ") || ""}
+                        onChange={(e) =>
+                          handleInspectionChange("findings", e.target.value)
+                        }
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Typography variant="h6">{inspectionLabel}</Typography>
+                      {hasFindings && (
+                        <Typography variant="body2" color="text.secondary">
+                          Findings: {inspection?.findings?.join(", ")}
+                        </Typography>
+                      )}
+                    </>
+                  )}
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Box>
 
-            {equipment.engine && (equipment.engine.serialNumber || equipment.engine.modelNumber) && (
-              <>
-                <Typography variant="subtitle1" fontWeight={600} sx={{ mt: 2 }}>
-                  Engine Information
-                </Typography>
-                {equipment.engine.serialNumber && (
-                  <Typography><strong>Engine Serial #:</strong> {equipment.engine.serialNumber}</Typography>
-                )}
-                {equipment.engine.modelNumber && (
-                  <Typography><strong>Engine Model #:</strong> {equipment.engine.modelNumber}</Typography>
-                )}
-              </>
-            )}
-
-            <Typography variant="subtitle1" fontWeight={600} sx={{ mt: 2 }}>
-              Specifications & Notes
-            </Typography>
-            {(equipment as any).weightCapacity && (
-              <Typography>
-                <strong>Weight Capacity:</strong> {(equipment as any).weightCapacity} lbs
-              </Typography>
-            )}
-            {(equipment as any).towingCapacity && (
-              <Typography>
-                <strong>Towing Capacity:</strong> {(equipment as any).towingCapacity} lbs
-              </Typography>
-            )}
-            {equipment.notes && (
-              <Typography><strong>Notes:</strong> {equipment.notes}</Typography>
-            )}
-          </Grid>
-        </Grid>
+        {/* General Info */}
+        <Typography><strong>Category:</strong> {equipment.category}</Typography>
+        <Typography><strong>Make:</strong> {equipment.make}</Typography>
+        <Typography><strong>Model #:</strong> {equipment.modelNumber}</Typography>
+        <Typography><strong>Serial #:</strong> {equipment.serialNumber}</Typography>
+        <Typography><strong>Status:</strong> {equipment.status}</Typography>
+        <Typography><strong>Condition:</strong> {equipment.condition}</Typography>
+        <Typography><strong>Location:</strong> {equipment.location}</Typography>
+        {equipment.lastInspection && (
+          <Typography>
+            <strong>Last Inspected:</strong>{" "}
+            {new Date(equipment.lastInspection).toLocaleString()}
+          </Typography>
+        )}
+        {equipment.notes && (
+          <Typography><strong>Notes:</strong> {equipment.notes}</Typography>
+        )}
       </Paper>
 
+      {/* Service + Parts */}
       <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", width: "100%" }}>
         <Box sx={{ flex: "1 1 48%", minWidth: "300px" }}>
-          <Paper elevation={2} sx={{ p: 2, height: "100%" }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+          <Paper elevation={2} sx={{ p: 2 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography variant="h6" fontWeight={600}>Service History</Typography>
               {canAddServiceOrParts && (
                 <Button variant="outlined" size="small" onClick={() => setServiceOpen(true)}>
@@ -179,7 +310,6 @@ const EquipmentDetails: React.FC = () => {
                 </Button>
               )}
             </Box>
-
             {services.length === 0 ? (
               <Typography color="textSecondary">No service records yet.</Typography>
             ) : (
@@ -197,9 +327,7 @@ const EquipmentDetails: React.FC = () => {
                   }}
                   onClick={() => navigate(`/service/${svc.id}`)}
                 >
-                  <Typography fontWeight={600}>
-                    {svc.summary || "Service Entry"}
-                  </Typography>
+                  <Typography fontWeight={600}>{svc.summary || "Service Entry"}</Typography>
                   <Typography variant="body2" color="textSecondary">
                     {new Date(svc.date).toLocaleDateString()}
                   </Typography>
@@ -215,8 +343,8 @@ const EquipmentDetails: React.FC = () => {
         </Box>
 
         <Box sx={{ flex: "1 1 48%", minWidth: "300px" }}>
-          <Paper elevation={2} sx={{ p: 2, height: "100%" }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+          <Paper elevation={2} sx={{ p: 2 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography variant="h6" fontWeight={600}>Parts</Typography>
               {canAddServiceOrParts && (
                 <Button variant="outlined" size="small" onClick={() => setPartOpen(true)}>
@@ -224,7 +352,6 @@ const EquipmentDetails: React.FC = () => {
                 </Button>
               )}
             </Box>
-
             {parts.length === 0 ? (
               <Typography color="textSecondary">No parts recorded yet.</Typography>
             ) : (
@@ -258,8 +385,8 @@ const EquipmentDetails: React.FC = () => {
         </Box>
       </Box>
 
-        {/* ✅ Modals (guarded by roles) */}
-        {canEditEquipment && editOpen && equipment && (
+      {/* Modals */}
+      {canEdit && editOpen && equipment && (
         <EquipmentEditModal
           open={editOpen}
           onClose={() => setEditOpen(false)}
@@ -267,7 +394,6 @@ const EquipmentDetails: React.FC = () => {
           onSaved={reloadAll}
         />
       )}
-
       {canAddServiceOrParts && serviceOpen && (
         <AddServiceModal
           open={serviceOpen}
@@ -276,7 +402,6 @@ const EquipmentDetails: React.FC = () => {
           onSaved={reloadAll}
         />
       )}
-
       {canAddServiceOrParts && partOpen && (
         <AddPartModal
           open={partOpen}

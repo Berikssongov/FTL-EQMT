@@ -258,7 +258,7 @@ const DashboardHome = () => {
 </Box>
 
       {/* Light/Dark Toggle Placeholder */}
-      <Box sx={{ position: "fixed", top: 80, right: 20 }}>
+      <Box sx={{ position: "fixed", top: 70, right: 20 }}>
         <Typography variant="caption">Dark Mode</Typography>
         <Switch checked={isDark} disabled />
       </Box>

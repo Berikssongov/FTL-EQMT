@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Table,
   TableBody,
@@ -15,6 +15,8 @@ import {
   Stack,
   useMediaQuery,
   useTheme,
+  Card,
+  CardContent,
 } from "@mui/material";
 
 import { fetchEquipment } from "../services/equipmentServices";
@@ -22,6 +24,13 @@ import { Equipment } from "../types";
 import AddEquipmentModal from "./AddEquipmentModal";
 import { useNavigate } from "react-router-dom";
 import { useRole } from "../contexts/RoleContext";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import ReportProblemIcon from "@mui/icons-material/ReportProblem";
+import BuildIcon from "@mui/icons-material/Build";
+
+import { getAllUsers } from "../services/userService";
+import { User } from "../types";
+
 
 const EquipmentList: React.FC = () => {
   const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
@@ -31,6 +40,19 @@ const EquipmentList: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { role } = useRole();
+
+  const [users, setUsers] = useState<User[]>([]);
+
+const loadUsers = async () => {
+  const data = await getAllUsers();
+  setUsers(data || []);
+};
+
+useEffect(() => {
+  loadEquipment();
+  loadUsers(); // 👈 add this
+}, []);
+
 
   const loadEquipment = async () => {
     setLoading(true);
@@ -48,12 +70,63 @@ const EquipmentList: React.FC = () => {
     loadEquipment();
   }, []);
 
+  // Widget logic
+  const inUseCount = equipmentList.filter((e) => e.status?.toLowerCase() === "in use").length;
+  const needsInspectionCount = equipmentList.filter(
+    (e) => e.inspection?.status?.toLowerCase() !== "pass"
+  ).length;
+  const brokenEquipment = equipmentList.filter((e) =>
+    ["broken", "out of service"].some((t) =>
+      e.condition?.toLowerCase().includes(t)
+    )
+  );
+
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant={isMobile ? "h5" : "h4"} fontWeight={600} sx={{ mb: 2 }}>
         Equipment List
       </Typography>
 
+      {/* Widgets */}
+      <Stack direction="row" spacing={2} flexWrap="wrap" sx={{ mb: 3 }}>
+        <Card sx={{ minWidth: 200, flex: "1 1 30%" }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" gap={1}>
+              <AssignmentTurnedInIcon color="primary" />
+              <Box>
+                <Typography variant="body2" color="text.secondary">In Use</Typography>
+                <Typography variant="h6">{inUseCount}</Typography>
+              </Box>
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ minWidth: 200, flex: "1 1 30%" }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" gap={1}>
+              <ReportProblemIcon color="warning" />
+              <Box>
+                <Typography variant="body2" color="text.secondary">Needs Inspection</Typography>
+                <Typography variant="h6">{needsInspectionCount}</Typography>
+              </Box>
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ minWidth: 200, flex: "1 1 30%" }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" gap={1}>
+              <BuildIcon color="error" />
+              <Box>
+                <Typography variant="body2" color="text.secondary">Broken</Typography>
+                <Typography variant="h6">{brokenEquipment.length}</Typography>
+              </Box>
+            </Box>
+          </CardContent>
+        </Card>
+      </Stack>
+
+      {/* Add Button */}
       {role === "admin" && (
         <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
           <Button variant="contained" onClick={() => setOpenModal(true)}>
@@ -62,6 +135,7 @@ const EquipmentList: React.FC = () => {
         </Box>
       )}
 
+      {/* Equipment Table */}
       {loading ? (
         <CircularProgress />
       ) : equipmentList.length === 0 ? (
@@ -91,8 +165,25 @@ const EquipmentList: React.FC = () => {
                   <TableCell>{item.category}</TableCell>
                   <TableCell>{item.status}</TableCell>
                   <TableCell>{item.location}</TableCell>
-                  <TableCell>{item.lastInspection || "—"}</TableCell>
-                  <TableCell>{item.assignedTo || "—"}</TableCell>
+                  <TableCell>
+                    {item.lastInspection
+                      ? new Date(item.lastInspection).toLocaleString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "—"}
+                  </TableCell>
+                  <TableCell>
+  {
+    users.find((u) => u.id === item.assignedTo)
+      ? `${users.find((u) => u.id === item.assignedTo)?.firstName} ${users.find((u) => u.id === item.assignedTo)?.lastName}`
+      : "—"
+  }
+</TableCell>
+
                 </TableRow>
               ))}
             </TableBody>
@@ -100,6 +191,7 @@ const EquipmentList: React.FC = () => {
         </TableContainer>
       )}
 
+      {/* Modal */}
       {role === "admin" && (
         <AddEquipmentModal
           open={openModal}

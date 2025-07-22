@@ -22,6 +22,12 @@ export interface Equipment {
   towingCapacity?: number;
   assignedTo?: string;
   lastInspection?: string;
+  inspection?: EquipmentInspection;
+}
+
+export interface EquipmentInspection {
+  status: string;
+  findings?: string[];
 }
 
 // ---------- UI-Friendly Equipment Extensions ----------
@@ -152,5 +158,24 @@ export interface KeyLogEntry {
   person: string;
   timestamp: string;
 }
+
+export interface UserProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+}
+
+// types.ts
+export interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+}
+
+
 
 
