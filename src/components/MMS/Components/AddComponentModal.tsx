@@ -47,13 +47,22 @@ const AddComponentModal: React.FC<Props> = ({ open, onClose, onSaved, assetId })
   const [selectedRoom, setSelectedRoom] = useState("__unset__");
   const [newRoomName, setNewRoomName] = useState("");
 
+  const frequencyOptions = [
+    { value: "monthly", label: "Monthly" },
+    { value: "quarterly", label: "Quarterly" },
+    { value: "semi-annually", label: "Semi-Annually" },
+    { value: "annually", label: "Annually" },
+    { value: "5-years", label: "Every 5 Years" },
+  ];
+
+
   const exteriorCategories = ["Weather Envelope", "Structure", "Landscaping", "Grounds", "Other"];
   const interiorCategories = ["Electrical", "HVAC", "Plumbing", "Fire Systems", "Life Safety", "Finishes", "Millwork", "Other"];
 
   const typeMap: Record<string, string[]> = {
     "Weather Envelope": ["Roofing", "Siding", "Gutters", "Flashing", "Fenestration"],
     Structure: ["Decks", "Foundation", "Stairs", "Ramp"],
-    Landscaping: ["Sub-Surface Drainage", "Shrubs", "Plant Beds"],
+    Landscaping: ["Sub-Surface Drainage", "Shrubs", "Plant Beds", "Asphalt", "Concrete", "Curbing"],
     Grounds: ["Parking Lot Lines", "Light Posts", "Gates"],
     Electrical: ["Lights", "Outlets", "Displays/Signs", "Door Opener", "Alarm System", "Appliance"],
     HVAC: ["Heater", "AC Unit", "Vent/Fan"],
@@ -152,9 +161,9 @@ const AddComponentModal: React.FC<Props> = ({ open, onClose, onSaved, assetId })
         itemType: type,
         condition,
         tags,
+        frequency, // ✅ put frequency at the top level
         room: location === "Interior" && selectedRoom !== "__unset__" ? selectedRoom : null,
         inspection: {
-          frequency,
           lastChecked: null,
           nextDue: null,
           status: "pending",
@@ -300,18 +309,18 @@ const AddComponentModal: React.FC<Props> = ({ open, onClose, onSaved, assetId })
             </TextField>
 
             <TextField
-              select
-              label="Inspection Frequency"
-              value={frequency}
-              onChange={(e) => setFrequency(e.target.value)}
-              fullWidth
-              size="small"
-            >
-              <MenuItem value="__unset__" disabled>-- Select Frequency --</MenuItem>
-              {["monthly", "quarterly", "yearly", "five Year"].map((opt) => (
-                <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-              ))}
-            </TextField>
+  select
+  label="Inspection Frequency"
+  value={frequency}
+  onChange={(e) => setFrequency(e.target.value)}
+  fullWidth
+  size="small"
+>
+  <MenuItem value="__unset__" disabled>-- Select Frequency --</MenuItem>
+  {frequencyOptions.map((opt) => (
+    <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+  ))}
+</TextField>
 
             <Autocomplete
               multiple

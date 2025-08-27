@@ -12,6 +12,7 @@ import {
   Routes,
   Route,
 } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import AppHeader from "./components/Layout/AppHeader";
 import Sidebar from "./components/Layout/Sidebar"
@@ -38,6 +39,8 @@ import { RoleProvider } from "./contexts/RoleContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase";
+import PlanDetail from "./components/MMS/Planning/PlanDetail";
+import PlanningOverview from "./components/MMS/Planning/PlanningOverview";
 
 const App: React.FC = () => {
   interface AssignedKey {
@@ -51,6 +54,12 @@ const App: React.FC = () => {
     keyName: string;
     lockboxLocation: string;
   }
+
+  const PlanDetailWrapper = () => {
+    const { planId } = useParams<{ planId: string }>();
+    if (!planId) return null;
+    return <PlanDetail planId={planId} />;
+  };
 
   const [assignedKeys, setAssignedKeys] = useState<AssignedKey[]>([]);
   const [lockboxKeys, setLockboxKeys] = useState<LockboxKey[]>([]);
@@ -109,6 +118,8 @@ const App: React.FC = () => {
                   <Route path="/components/:id" element={<ComponentDetail />} />
                   <Route path="/settings/backup" element={<BackupRestorePage />} />
                   <Route path="/login" element={<LoginPage />} />
+                  <Route path="/mms/planning" element={<PlanningOverview />} />
+                  <Route path="/mms/planning/:planId" element={<PlanDetailWrapper />} />
                 </Routes>
               </Box>
             </Box>

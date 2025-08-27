@@ -175,9 +175,9 @@ const DashboardHome = () => {
         <Card sx={{ bgcolor: "#4caf50", color: "white" }}>
           <CardContent>
             <Typography variant="h6">Current Weekend Assigned</Typography>
-            <Typography variant="body1">July 19 (Patrick)</Typography>
-            <Typography variant="body1">July 20 (Frank)</Typography>
-            <Typography variant="body2">Remain Weekends: 7</Typography>
+            <Typography variant="body1">August 23 (Daniel)</Typography>
+            <Typography variant="body1">August 24 (Daniel)</Typography>
+            <Typography variant="body2">Remain Weekends: 2</Typography>
           </CardContent>
         </Card>
       </Box>
