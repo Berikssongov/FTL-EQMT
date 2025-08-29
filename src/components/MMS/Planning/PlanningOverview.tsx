@@ -42,10 +42,6 @@ const PlanningOverview: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        Planning
-      </Typography>
-
       <Button
         variant="contained"
         sx={{ mb: 2 }}

@@ -1,3 +1,4 @@
+// src/components/MMS/Planning/CreatePlanModal.tsx
 import React, { useEffect, useState } from "react";
 import {
   Dialog,
@@ -15,7 +16,16 @@ import {
   TableRow,
   Checkbox,
   Paper,
+  Box,
+  InputAdornment,
+  Select,
+  FormControl,
+  InputLabel,
+  Tooltip,
+  IconButton,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { db } from "../../../firebase";
 import {
   addDoc,
@@ -31,6 +41,8 @@ type Props = {
   onSaved?: () => void;
 };
 
+type Tag = { key: string; value: string };
+
 type Inspection = {
   id: string;
   componentId: string;
@@ -38,9 +50,8 @@ type Inspection = {
   assetName?: string;
   componentName?: string;
   date: string;
-  inspector: string;
-  notes?: string;
   status: string;
+  tags?: Tag[];
 };
 
 const CreatePlanModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
@@ -53,6 +64,9 @@ const CreatePlanModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
   const [resources, setResources] = useState("");
   const [failedInspections, setFailedInspections] = useState<Inspection[]>([]);
   const [selectedInspections, setSelectedInspections] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [tagFilter, setTagFilter] = useState<"all" | "location" | "category" | "type">("all");
+  const [usage, setUsage] = useState<Record<string, string[]>>({});
 
   // fetch failed inspections
   useEffect(() => {
@@ -65,6 +79,7 @@ const CreatePlanModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
           .map(async (insp: any) => {
             let assetName: string | undefined;
             let componentName: string | undefined;
+            let tags: Tag[] = [];
 
             if (insp.assetId) {
               const assetDoc = await getDoc(doc(db, "assets", insp.assetId));
@@ -72,12 +87,45 @@ const CreatePlanModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
             }
             if (insp.componentId) {
               const compDoc = await getDoc(doc(db, "components", insp.componentId));
-              if (compDoc.exists()) componentName = compDoc.data().name;
+              if (compDoc.exists()) {
+                const compData = compDoc.data();
+                componentName = compData.name;
+
+                // parse tags: "key:value" → { key, value }
+                if (Array.isArray(compData.tags)) {
+                  tags = compData.tags.map((t: string) => {
+                    const [key, value] = t.split(":");
+                    return { key, value };
+                  });
+                }
+              }
             }
-            return { ...insp, assetName, componentName } as Inspection;
+
+            return { ...insp, assetName, componentName, tags } as Inspection;
           })
       );
       setFailedInspections(data);
+
+      // build usage map (plans + workOrders)
+      const usageMap: Record<string, string[]> = {};
+
+      const planSnaps = await getDocs(collection(db, "plans"));
+      planSnaps.forEach((docSnap) => {
+        const data = docSnap.data();
+        (data.inspections || []).forEach((id: string) => {
+          usageMap[id] = [...(usageMap[id] || []), `Plan: ${data.title}`];
+        });
+      });
+
+      const woSnaps = await getDocs(collection(db, "workOrders"));
+      woSnaps.forEach((docSnap) => {
+        const data = docSnap.data();
+        (data.inspections || []).forEach((id: string) => {
+          usageMap[id] = [...(usageMap[id] || []), `Work Order: ${data.title}`];
+        });
+      });
+
+      setUsage(usageMap);
     };
     if (open) fetchFailed();
   }, [open]);
@@ -112,6 +160,8 @@ const CreatePlanModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
       setActions("");
       setResources("");
       setSelectedInspections([]);
+      setSearchTerm("");
+      setTagFilter("all");
 
       onSaved?.();
       onClose();
@@ -120,8 +170,21 @@ const CreatePlanModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
     }
   };
 
+  // Filtering logic
+  const filteredInspections = failedInspections.filter((insp) => {
+    const matchesSearch =
+      insp.assetName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      insp.componentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      insp.tags?.some((t) => t.value.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesTag =
+      tagFilter === "all" || insp.tags?.some((t) => t.key === tagFilter);
+
+    return matchesSearch && matchesTag;
+  });
+
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="lg">
       <DialogTitle>Create New Plan</DialogTitle>
       <DialogContent>
         <TextField
@@ -195,6 +258,38 @@ const CreatePlanModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
           onChange={(e) => setResources(e.target.value)}
         />
 
+        {/* Search & Tag Filter */}
+        <Box sx={{ display: "flex", gap: 2, mt: 3, mb: 1 }}>
+          <TextField
+            placeholder="Search inspections (asset, component, tag)..."
+            fullWidth
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <FormControl sx={{ minWidth: 160 }}>
+            <InputLabel>Tag Filter</InputLabel>
+            <Select
+              value={tagFilter}
+              label="Tag Filter"
+              onChange={(e) =>
+                setTagFilter(e.target.value as "all" | "location" | "category" | "type")
+              }
+            >
+              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="location">Location</MenuItem>
+              <MenuItem value="category">Category</MenuItem>
+              <MenuItem value="type">Type</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+
         {/* Failed inspections table */}
         <TableContainer component={Paper} sx={{ maxHeight: 300, mt: 2 }}>
           <Table size="small" stickyHeader>
@@ -204,12 +299,12 @@ const CreatePlanModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
                 <TableCell>Asset</TableCell>
                 <TableCell>Component</TableCell>
                 <TableCell>Date</TableCell>
-                <TableCell>Inspector</TableCell>
-                <TableCell>Notes</TableCell>
+                <TableCell>Tags</TableCell>
+                <TableCell>Usage</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {failedInspections.map((insp) => (
+              {filteredInspections.map((insp) => (
                 <TableRow key={insp.id} hover>
                   <TableCell padding="checkbox">
                     <Checkbox
@@ -219,13 +314,32 @@ const CreatePlanModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
                   </TableCell>
                   <TableCell>{insp.assetName || "Unknown"}</TableCell>
                   <TableCell>{insp.componentName || insp.componentId}</TableCell>
+                  <TableCell>{new Date(insp.date).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    {new Date(insp.date).toLocaleDateString()}
+                    {insp.tags && insp.tags.length > 0
+                      ? insp.tags.map((t) => t.value).join(", ")
+                      : "-"}
                   </TableCell>
-                  <TableCell>{insp.inspector}</TableCell>
-                  <TableCell>{insp.notes || "-"}</TableCell>
+                  <TableCell>
+                    {usage[insp.id] ? (
+                      <Tooltip title={usage[insp.id].join(", ")} arrow>
+                        <IconButton>
+                          <WarningAmberIcon color="warning" />
+                        </IconButton>
+                      </Tooltip>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
+              {filteredInspections.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    No matching inspections
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>

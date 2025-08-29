@@ -61,17 +61,17 @@ const AddComponentModal: React.FC<Props> = ({ open, onClose, onSaved, assetId })
 
   const typeMap: Record<string, string[]> = {
     "Weather Envelope": ["Roofing", "Siding", "Gutters", "Flashing", "Fenestration"],
-    Structure: ["Decks", "Foundation", "Stairs", "Ramp"],
+    Structure: ["Foundation", "Decks", "Stairs, Ramps + Handrail"],
     Landscaping: ["Sub-Surface Drainage", "Shrubs", "Plant Beds", "Asphalt", "Concrete", "Curbing"],
-    Grounds: ["Parking Lot Lines", "Light Posts", "Gates"],
+    Grounds: ["Parking Lot Lines", "Light Posts", "Gates", "Trees"],
     Electrical: ["Lights", "Outlets", "Displays/Signs", "Door Opener", "Alarm System", "Appliance"],
     HVAC: ["Heater", "AC Unit", "Vent/Fan"],
-    Plumbing: ["Fixtures", "Water Cooler", "Washing Machine", "Floor Drain"],
+    Plumbing: ["Fixtures", "Water Cooler", "Water Fountain", "Washing Machine", "Floor Drain"],
     "Fire Systems": ["Pull Station", "Emergency Lighting", "Fire Suppression"],
-    "Life Safety": ["First Aid Kit", "AED"],
+    "Life Safety": ["First Aid Kit", "AED", "Emergency Lighting"],
     Finishes: ["Ceilings, Walls, Floors"],
-    Millwork: ["Doors, Baseboard, Casings", "Cabinet"],
-    Other: ["Exterior Outlets", "Lighting", "Electrical Devices", "Spigot"],
+    Millwork: ["Doors, Baseboard, Casings", "Cabinets"],
+    Other: ["Exterior Electrical", "Exterior HVAC", "Lighting", "Spigot"],
   };
 
   const categoryOptions =

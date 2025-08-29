@@ -19,6 +19,7 @@ type Component = {
   name: string;
   assetId: string;
   assetName?: string;
+  room?: string | null;
   frequency?: string;
   lastChecked?: string | null;
   nextDue?: string | null;
@@ -41,8 +42,18 @@ const InspectionOverview: React.FC = () => {
 
       const comps: Component[] = await Promise.all(
         snap.docs.map(async (docSnap) => {
-          const data = docSnap.data() as Omit<Component, "id">;
-          const comp: Component = { id: docSnap.id, ...data };
+          const data = docSnap.data() as any;
+          const comp: Component = {
+            id: docSnap.id,
+            name: data.name,
+            assetId: data.assetId,
+            assetName: undefined,
+            room: data.room ?? null,
+            frequency: data.frequency,
+            lastChecked: data.lastChecked ?? null,
+            nextDue: data.nextDue ?? null,
+            status: data.status,
+          };
 
           // fetch asset name for context
           if (comp.assetId) {
@@ -86,86 +97,92 @@ const InspectionOverview: React.FC = () => {
     fetchData();
   }, [refreshKey]);
 
+  const renderSecondary = (comp: Component, mode: "overdue" | "upcoming" | "recent") => {
+    if (mode === "overdue") {
+      return `Asset: ${comp.assetName || "Unknown"} — Room: ${comp.room || "-"} — Next Due: ${comp.nextDue || "Not inspected yet"}`;
+    }
+    if (mode === "upcoming") {
+      return `Asset: ${comp.assetName || "Unknown"} — Room: ${comp.room || "-"} — Next Due: ${comp.nextDue || "-"}`;
+    }
+    return `Asset: ${comp.assetName || "Unknown"} — Room: ${comp.room || "-"} — Last Checked: ${comp.lastChecked || "-"}`;
+  };
+
   return (
     <Box>
       {/* Overdue */}
-<Paper sx={{ p: 2, mb: 3 }}>
-  <Typography variant="h6">❌ Overdue Inspections</Typography>
-  <List>
-    {overdue.map((comp) => (
-      <React.Fragment key={comp.id}>
-        <ListItem
-          secondaryAction={
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => setSelectedComponent(comp)}
-            >
-              Inspect
-            </Button>
-          }
-        >
-          <ListItemText
-            primary={comp.name}
-            secondary={`Asset: ${
-              comp.assetName || "Unknown"
-            } — Next Due: ${comp.nextDue || "Not inspected yet"}`}
-          />
-        </ListItem>
-        <Divider />
-      </React.Fragment>
-    ))}
-    {overdue.length === 0 && (
-      <Typography variant="body2" color="textSecondary">
-        ✅ No overdue inspections!
-      </Typography>
-    )}
-  </List>
-</Paper>
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6">❌ Overdue Inspections</Typography>
+        <List>
+          {overdue.map((comp) => (
+            <React.Fragment key={comp.id}>
+              <ListItem
+                secondaryAction={
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setSelectedComponent(comp)}
+                  >
+                    Inspect
+                  </Button>
+                }
+              >
+                <ListItemText
+                  primary={comp.name}
+                  secondary={renderSecondary(comp, "overdue")}
+                />
+              </ListItem>
+              <Divider />
+            </React.Fragment>
+          ))}
+          {overdue.length === 0 && (
+            <Typography variant="body2" color="textSecondary">
+              ✅ No overdue inspections!
+            </Typography>
+          )}
+        </List>
+      </Paper>
 
-{/* Upcoming */}
-<Paper sx={{ p: 2, mb: 3 }}>
-  <Typography variant="h6">⏳ Upcoming Inspections</Typography>
-  <List>
-    {upcoming.map((comp) => {
-      const dueDate = comp.nextDue ? new Date(comp.nextDue) : null;
-      const withinAWeek =
-        dueDate &&
-        dueDate.getTime() - new Date().getTime() <= 1000 * 60 * 60 * 24 * 7;
+      {/* Upcoming */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6">⏳ Upcoming Inspections</Typography>
+        <List>
+          {upcoming.map((comp) => {
+            const dueDate = comp.nextDue ? new Date(comp.nextDue) : null;
+            const withinAWeek =
+              !!dueDate &&
+              dueDate.getTime() - new Date().getTime() <= 1000 * 60 * 60 * 24 * 7;
 
-      return (
-        <React.Fragment key={comp.id}>
-          <ListItem
-            secondaryAction={
-              withinAWeek && (
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => setSelectedComponent(comp)}
+            return (
+              <React.Fragment key={comp.id}>
+                <ListItem
+                  secondaryAction={
+                    withinAWeek && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => setSelectedComponent(comp)}
+                      >
+                        Inspect
+                      </Button>
+                    )
+                  }
                 >
-                  Inspect
-                </Button>
-              )
-            }
-          >
-            <ListItemText
-              primary={comp.name}
-              secondary={`Asset: ${
-                comp.assetName || "Unknown"
-              } — Next Due: ${comp.nextDue || "-"}`}
-            />
-          </ListItem>
-          <Divider />
-        </React.Fragment>
-      );
-    })}
-    {upcoming.length === 0 && (
-      <Typography variant="body2" color="textSecondary">
-        No inspections due soon.
-      </Typography>
-    )}
-  </List>
-</Paper>
+                  <ListItemText
+                    primary={comp.name}
+                    secondary={renderSecondary(comp, "upcoming")}
+                  />
+                </ListItem>
+                <Divider />
+              </React.Fragment>
+            );
+          })}
+          {upcoming.length === 0 && (
+            <Typography variant="body2" color="textSecondary">
+              No inspections due soon.
+            </Typography>
+          )}
+        </List>
+      </Paper>
 
       {/* Recent */}
       <Paper sx={{ p: 2 }}>
@@ -175,9 +192,7 @@ const InspectionOverview: React.FC = () => {
             <ListItem key={comp.id}>
               <ListItemText
                 primary={comp.name}
-                secondary={`Asset: ${comp.assetName || "Unknown"} — Last Checked: ${
-                  comp.lastChecked || "-"
-                }`}
+                secondary={renderSecondary(comp, "recent")}
               />
             </ListItem>
           ))}

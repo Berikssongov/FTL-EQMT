@@ -1,5 +1,5 @@
 // src/components/MMS/MMSOverview.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -8,18 +8,53 @@ import {
   Paper,
 } from "@mui/material";
 import { useRole } from "../../contexts/RoleContext";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import AssetList from "./Assets/AssetList";
 import ComponentList from "./Components/ComponentList";
-import InspectionOverview from "./Inspections/InspectionOverview"; 
+import InspectionOverview from "./Inspections/InspectionOverview";
 import PlanningOverview from "./Planning/PlanningOverview";
+import WorkOrdersPage from "./Work Orders/WorkOrdersPage";
 
+// Map tabs to hash values for navigation
+const tabMap: Record<string, number> = {
+  inventory: 0,
+  inspections: 1,
+  planning: 2,
+  workorders: 3,
+  reports: 4,
+};
+
+const reverseTabMap = Object.fromEntries(
+  Object.entries(tabMap).map(([key, val]) => [val, key])
+);
 
 const MMSOverview: React.FC = () => {
   const { role } = useRole();
-  const [tab, setTab] = useState(0);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Default to inventory if no hash
+  const initialTab =
+    tabMap[location.hash.replace("#", "")] ?? tabMap.inventory;
+  const [tab, setTab] = useState(initialTab);
+
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [selectedAssetName, setSelectedAssetName] = useState<string | null>(null);
+
+  // Sync tab state with hash changes (when user navigates or presses back/forward)
+  useEffect(() => {
+    const hash = location.hash.replace("#", "");
+    if (tabMap[hash] !== undefined) {
+      setTab(tabMap[hash]);
+    }
+  }, [location.hash]);
+
+  const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTab(newValue);
+    const tabKey = reverseTabMap[newValue];
+    navigate(`/mms#${tabKey}`);
+  };
 
   if (role !== "admin") {
     return (
@@ -28,7 +63,8 @@ const MMSOverview: React.FC = () => {
           🚧 MMS Under Construction
         </Typography>
         <Typography variant="body1">
-          This section is currently being developed. Please check back soon for new features related to assets, inspections, and maintenance tracking.
+          This section is currently being developed. Please check back soon for
+          new features related to assets, inspections, and maintenance tracking.
         </Typography>
       </Box>
     );
@@ -40,23 +76,23 @@ const MMSOverview: React.FC = () => {
         🛠 Maintenance Management System
       </Typography>
 
-
       {/* Tabs Navigation */}
       <Box sx={{ maxWidth: 700, mx: "auto", mb: 3 }}>
-      <Paper sx={{ mb: 3 }}>
-        <Tabs
-          value={tab}
-          onChange={(e, newValue) => setTab(newValue)}
-          centered
-          textColor="primary"
-          indicatorColor="primary">
-          <Tab label="Inventory" />
-          <Tab label="Inspections" />
-          <Tab label="Planning" />
-          <Tab label="Work Orders" />
-          <Tab label="Reports" />
-        </Tabs>
-      </Paper>
+        <Paper sx={{ mb: 3 }}>
+          <Tabs
+            value={tab}
+            onChange={handleChange}
+            centered
+            textColor="primary"
+            indicatorColor="primary"
+          >
+            <Tab label="Inventory" />
+            <Tab label="Inspections" />
+            <Tab label="Planning" />
+            <Tab label="Work Orders" />
+            <Tab label="Reports" />
+          </Tabs>
+        </Paper>
       </Box>
 
       {/* Tab Panels */}
@@ -77,7 +113,7 @@ const MMSOverview: React.FC = () => {
           <Typography variant="h5" gutterBottom>
             📋 Inspections
           </Typography>
-          <InspectionOverview /> {/* ✅ replaces placeholder */}
+          <InspectionOverview />
         </Box>
       )}
 
@@ -95,9 +131,7 @@ const MMSOverview: React.FC = () => {
           <Typography variant="h5" gutterBottom>
             🔧 Work Orders
           </Typography>
-          <Typography>
-            Track active and completed work orders here (coming soon).
-          </Typography>
+          <WorkOrdersPage />
         </Box>
       )}
 
