@@ -25,6 +25,12 @@ export type Quote = {
   fileBase64?: string;
 };
 
+export type StatusHistoryEntry = {
+  status: string;
+  auditor: string;
+  timestamp: number;
+};
+
 export type WorkOrder = {
   id: string;
   title: string;
@@ -39,6 +45,7 @@ export type WorkOrder = {
   quotes?: Quote[];
   status?: string;
   createdAt: string;
+  statusHistory?: StatusHistoryEntry[];  // ✅ Added
 };
 
 const WorkOrdersPage: React.FC = () => {

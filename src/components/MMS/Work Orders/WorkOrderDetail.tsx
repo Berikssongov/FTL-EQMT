@@ -13,6 +13,8 @@ import {
   Button,
   IconButton,
   TextField,
+  MenuItem,
+  Select,
 } from "@mui/material";
 import { db } from "../../../firebase";
 import {
@@ -24,7 +26,8 @@ import {
 } from "firebase/firestore";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { WorkOrder, Quote } from "./WorkOrdersPage";
+import { WorkOrder, Quote, StatusHistoryEntry } from "./WorkOrdersPage";
+import { useAuth } from "../../../contexts/AuthContext";
 
 type Props = {
   workOrder?: WorkOrder; // If passed, use directly
@@ -52,15 +55,29 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
-const WorkOrderDetail: React.FC<Props> = ({ workOrder, workOrderId, onUpdated }) => {
-  const [loadedWorkOrder, setLoadedWorkOrder] = useState<WorkOrder | null>(workOrder || null);
+const WorkOrderDetail: React.FC<Props> = ({
+  workOrder,
+  workOrderId,
+  onUpdated,
+}) => {
+  const { user, firstName, lastName } = useAuth();
+  const inspector =
+    (firstName && lastName
+      ? `${firstName} ${lastName}`
+      : user?.email || user?.uid) || "Unknown";
+
+  const [loadedWorkOrder, setLoadedWorkOrder] = useState<WorkOrder | null>(
+    workOrder || null
+  );
   const [newQuote, setNewQuote] = useState<Quote>({
     vendor: "",
     cost: 0,
     fileName: "",
     fileBase64: "",
   });
-  const [inspectionsDetails, setInspectionsDetails] = useState<InspectionDetail[]>([]);
+  const [inspectionsDetails, setInspectionsDetails] = useState<
+    InspectionDetail[]
+  >([]);
 
   // Fetch if only id is provided
   useEffect(() => {
@@ -186,6 +203,34 @@ const WorkOrderDetail: React.FC<Props> = ({ workOrder, workOrderId, onUpdated })
     }));
   };
 
+  const handleStatusChange = async (newStatus: string) => {
+    if (!loadedWorkOrder?.id) return;
+    const docRef = doc(db, "workOrders", loadedWorkOrder.id);
+
+    const newEntry: StatusHistoryEntry = {
+      status: newStatus,
+      auditor: inspector,
+      timestamp: Date.now(), // ✅ number, consistent
+    };
+
+    await updateDoc(docRef, {
+      status: newStatus,
+      statusHistory: arrayUnion(newEntry),
+    });
+
+    setLoadedWorkOrder((prev) =>
+      prev
+        ? {
+            ...prev,
+            status: newStatus,
+            statusHistory: [...(prev.statusHistory || []), newEntry],
+          }
+        : prev
+    );
+
+    await onUpdated?.();
+  };
+
   if (!loadedWorkOrder) {
     return <Typography>Loading Work Order...</Typography>;
   }
@@ -209,10 +254,12 @@ const WorkOrderDetail: React.FC<Props> = ({ workOrder, workOrderId, onUpdated })
 
       <Divider sx={{ my: 2 }} />
 
-      {/* Inspections wrapped in Accordion (only change) */}
+      {/* Inspections Accordion */}
       <Accordion defaultExpanded={false}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography variant="h6">Inspections ({inspectionsDetails.length})</Typography>
+          <Typography variant="h6">
+            Inspections ({inspectionsDetails.length})
+          </Typography>
         </AccordionSummary>
         <AccordionDetails>
           {inspectionsDetails.length > 0 ? (
@@ -220,10 +267,14 @@ const WorkOrderDetail: React.FC<Props> = ({ workOrder, workOrderId, onUpdated })
               <Box key={ins.id} sx={{ mb: 2, border: "1px solid #eee", p: 2 }}>
                 <Typography>
                   {ins.componentName || ins.id}
-                  {ins.room ? ` (${ins.room})` : ""} — {ins.assetName || "Unknown Asset"}
+                  {ins.room ? ` (${ins.room})` : ""} —{" "}
+                  {ins.assetName || "Unknown Asset"}
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
-                  {ins.date ? new Date(ins.date).toLocaleString() : "No date"} • {ins.inspector || "Unknown"}
+                  {ins.date
+                    ? new Date(ins.date).toLocaleString()
+                    : "No date"}{" "}
+                  • {ins.inspector || "Unknown"}
                 </Typography>
                 <Typography sx={{ mt: 1 }}>{ins.notes || "-"}</Typography>
               </Box>
@@ -236,6 +287,51 @@ const WorkOrderDetail: React.FC<Props> = ({ workOrder, workOrderId, onUpdated })
 
       <Divider sx={{ my: 2 }} />
 
+      {/* Status History Accordion */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="h6">Status History</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          {loadedWorkOrder.statusHistory &&
+          loadedWorkOrder.statusHistory.length > 0 ? (
+            <List>
+              {loadedWorkOrder.statusHistory.map(
+                (entry: StatusHistoryEntry, idx: number) => (
+                  <ListItem key={idx}>
+                    <ListItemText
+                      primary={`${new Date(
+                        entry.timestamp
+                      ).toLocaleString()} — ${entry.status}`}
+                      secondary={`Auditor: ${entry.auditor}`}
+                    />
+                  </ListItem>
+                )
+              )}
+            </List>
+          ) : (
+            <Typography>No status history yet.</Typography>
+          )}
+
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle1">Update Status</Typography>
+            <Select
+              fullWidth
+              value={loadedWorkOrder.status || ""}
+              onChange={(e) => handleStatusChange(e.target.value)}
+            >
+              <MenuItem value="open">Open</MenuItem>
+              <MenuItem value="in-progress">In Progress</MenuItem>
+              <MenuItem value="completed">Completed</MenuItem>
+              <MenuItem value="closed">Closed</MenuItem>
+            </Select>
+          </Box>
+        </AccordionDetails>
+      </Accordion>
+
+      <Divider sx={{ my: 2 }} />
+
+      {/* Quotes Section */}
       <Typography variant="h6">Vendor Quotes</Typography>
       {loadedWorkOrder.quotes && loadedWorkOrder.quotes.length > 0 ? (
         loadedWorkOrder.quotes.map((q: Quote, index: number) => (
@@ -252,7 +348,9 @@ const WorkOrderDetail: React.FC<Props> = ({ workOrder, workOrderId, onUpdated })
           >
             <Box>
               <Typography>Vendor: {q.vendor}</Typography>
-              <Typography>Cost: ${q.cost?.toFixed?.(2) ?? q.cost}</Typography>
+              <Typography>
+                Cost: ${q.cost?.toFixed?.(2) ?? q.cost}
+              </Typography>
               {q.fileBase64 && (
                 <Button
                   size="small"
@@ -303,13 +401,10 @@ const WorkOrderDetail: React.FC<Props> = ({ workOrder, workOrderId, onUpdated })
           }))
         }
       />
-      <Button
-        variant="outlined"
-        component="label"
-        fullWidth
-        sx={{ mt: 1 }}
-      >
-        {newQuote.fileName ? `Uploaded: ${newQuote.fileName}` : "Upload Quote PDF"}
+      <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>
+        {newQuote.fileName
+          ? `Uploaded: ${newQuote.fileName}`
+          : "Upload Quote PDF"}
         <input
           type="file"
           hidden

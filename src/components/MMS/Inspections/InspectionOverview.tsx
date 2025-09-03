@@ -3,16 +3,19 @@ import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
-  Paper,
   List,
   ListItem,
   ListItemText,
   Button,
   Divider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import { db } from "../../../firebase";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import QuickAddInspectionModal from "./QuickAddInspectionModal";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 type Component = {
   id: string;
@@ -55,7 +58,6 @@ const InspectionOverview: React.FC = () => {
             status: data.status,
           };
 
-          // fetch asset name for context
           if (comp.assetId) {
             const assetDoc = await getDoc(doc(db, "assets", comp.assetId));
             if (assetDoc.exists()) {
@@ -66,22 +68,19 @@ const InspectionOverview: React.FC = () => {
         })
       );
 
-      // overdue = no nextDue OR nextDue < today
       const overdueComps = comps.filter((c) => {
         if (!c.nextDue) return true;
         const dueDate = new Date(c.nextDue);
         return dueDate < now;
       });
 
-      // upcoming = due date in the next 30 days
       const upcomingComps = comps.filter((c) => {
         if (!c.nextDue) return false;
         const dueDate = new Date(c.nextDue);
         const diff = dueDate.getTime() - now.getTime();
-        return diff > 0 && diff <= 1000 * 60 * 60 * 24 * 30; // within 30 days
+        return diff > 0 && diff <= 1000 * 60 * 60 * 24 * 30;
       });
 
-      // recent = lastChecked within the last 30 days
       const recentComps = comps.filter((c) => {
         if (!c.lastChecked) return false;
         const checked = new Date(c.lastChecked);
@@ -97,112 +96,134 @@ const InspectionOverview: React.FC = () => {
     fetchData();
   }, [refreshKey]);
 
-  const renderSecondary = (comp: Component, mode: "overdue" | "upcoming" | "recent") => {
+  const renderSecondary = (
+    comp: Component,
+    mode: "overdue" | "upcoming" | "recent"
+  ) => {
     if (mode === "overdue") {
-      return `Asset: ${comp.assetName || "Unknown"} — Room: ${comp.room || "-"} — Next Due: ${comp.nextDue || "Not inspected yet"}`;
+      return `Asset: ${comp.assetName || "Unknown"} — Room: ${
+        comp.room || "-"
+      } — Next Due: ${comp.nextDue || "Not inspected yet"}`;
     }
     if (mode === "upcoming") {
-      return `Asset: ${comp.assetName || "Unknown"} — Room: ${comp.room || "-"} — Next Due: ${comp.nextDue || "-"}`;
+      return `Asset: ${comp.assetName || "Unknown"} — Room: ${
+        comp.room || "-"
+      } — Next Due: ${comp.nextDue || "-"}`;
     }
-    return `Asset: ${comp.assetName || "Unknown"} — Room: ${comp.room || "-"} — Last Checked: ${comp.lastChecked || "-"}`;
+    return `Asset: ${comp.assetName || "Unknown"} — Room: ${
+      comp.room || "-"
+    } — Last Checked: ${comp.lastChecked || "-"}`;
   };
 
   return (
     <Box>
       {/* Overdue */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6">❌ Overdue Inspections</Typography>
-        <List>
-          {overdue.map((comp) => (
-            <React.Fragment key={comp.id}>
-              <ListItem
-                secondaryAction={
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => setSelectedComponent(comp)}
-                  >
-                    Inspect
-                  </Button>
-                }
-              >
-                <ListItemText
-                  primary={comp.name}
-                  secondary={renderSecondary(comp, "overdue")}
-                />
-              </ListItem>
-              <Divider />
-            </React.Fragment>
-          ))}
-          {overdue.length === 0 && (
-            <Typography variant="body2" color="textSecondary">
-              ✅ No overdue inspections!
-            </Typography>
-          )}
-        </List>
-      </Paper>
-
-      {/* Upcoming */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6">⏳ Upcoming Inspections</Typography>
-        <List>
-          {upcoming.map((comp) => {
-            const dueDate = comp.nextDue ? new Date(comp.nextDue) : null;
-            const withinAWeek =
-              !!dueDate &&
-              dueDate.getTime() - new Date().getTime() <= 1000 * 60 * 60 * 24 * 7;
-
-            return (
+      <Accordion defaultExpanded>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="h6">❌ Overdue Inspections ({overdue.length})</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <List dense>
+            {overdue.map((comp) => (
               <React.Fragment key={comp.id}>
                 <ListItem
                   secondaryAction={
-                    withinAWeek && (
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => setSelectedComponent(comp)}
-                      >
-                        Inspect
-                      </Button>
-                    )
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => setSelectedComponent(comp)}
+                    >
+                      Inspect
+                    </Button>
                   }
                 >
                   <ListItemText
                     primary={comp.name}
-                    secondary={renderSecondary(comp, "upcoming")}
+                    secondary={renderSecondary(comp, "overdue")}
                   />
                 </ListItem>
                 <Divider />
               </React.Fragment>
-            );
-          })}
-          {upcoming.length === 0 && (
-            <Typography variant="body2" color="textSecondary">
-              No inspections due soon.
-            </Typography>
-          )}
-        </List>
-      </Paper>
+            ))}
+            {overdue.length === 0 && (
+              <Typography variant="body2" color="textSecondary">
+                ✅ No overdue inspections!
+              </Typography>
+            )}
+          </List>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* Upcoming */}
+      <Accordion defaultExpanded>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="h6">⏳ Upcoming Inspections ({upcoming.length})</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <List dense>
+            {upcoming.map((comp) => {
+              const dueDate = comp.nextDue ? new Date(comp.nextDue) : null;
+              const withinAWeek =
+                !!dueDate &&
+                dueDate.getTime() - new Date().getTime() <=
+                  1000 * 60 * 60 * 24 * 7;
+
+              return (
+                <React.Fragment key={comp.id}>
+                  <ListItem
+                    secondaryAction={
+                      withinAWeek && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => setSelectedComponent(comp)}
+                        >
+                          Inspect
+                        </Button>
+                      )
+                    }
+                  >
+                    <ListItemText
+                      primary={comp.name}
+                      secondary={renderSecondary(comp, "upcoming")}
+                    />
+                  </ListItem>
+                  <Divider />
+                </React.Fragment>
+              );
+            })}
+            {upcoming.length === 0 && (
+              <Typography variant="body2" color="textSecondary">
+                No inspections due soon.
+              </Typography>
+            )}
+          </List>
+        </AccordionDetails>
+      </Accordion>
 
       {/* Recent */}
-      <Paper sx={{ p: 2 }}>
-        <Typography variant="h6">✅ Recent Inspections</Typography>
-        <List>
-          {recent.map((comp) => (
-            <ListItem key={comp.id}>
-              <ListItemText
-                primary={comp.name}
-                secondary={renderSecondary(comp, "recent")}
-              />
-            </ListItem>
-          ))}
-          {recent.length === 0 && (
-            <Typography variant="body2" color="textSecondary">
-              No recent inspections.
-            </Typography>
-          )}
-        </List>
-      </Paper>
+      <Accordion defaultExpanded={false}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="h6">
+            ✅ Recently Checked Components ({recent.length})
+          </Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <List dense>
+            {recent.map((comp) => (
+              <ListItem key={comp.id}>
+                <ListItemText
+                  primary={comp.name}
+                  secondary={renderSecondary(comp, "recent")}
+                />
+              </ListItem>
+            ))}
+            {recent.length === 0 && (
+              <Typography>No components checked in the last 30 days.</Typography>
+            )}
+          </List>
+        </AccordionDetails>
+      </Accordion>
 
       {/* Quick Add Modal */}
       {selectedComponent && (
@@ -213,7 +234,7 @@ const InspectionOverview: React.FC = () => {
           componentName={selectedComponent.name}
           onSaved={() => {
             setSelectedComponent(null);
-            setRefreshKey((prev) => prev + 1); // trigger refetch
+            setRefreshKey((prev) => prev + 1);
           }}
         />
       )}
