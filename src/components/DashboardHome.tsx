@@ -147,8 +147,8 @@ const DashboardHome = () => {
           { icon: <Warning />, label: brokenEquipment.length, sub: "OUT OF SERVICE" },
           { icon: <Handyman />, label: handToolCount, sub: "HAND TOOLS" },
           { icon: <Power />, label: powerToolCount, sub: "POWER TOOLS" },
-          { icon: <Build />, label: "21°C", sub: "WEATHER" },
-          { icon: <Build />, label: "10000%", sub: "BUDGET USED" },
+          { icon: <Build />, label: "5°C", sub: "WEATHER" },
+          { icon: <Build />, label: "1000000%", sub: "BUDGET USED" },
         ].map((item, idx) => (
           <Card key={idx} sx={{ display: "flex", alignItems: "center", px: 2, py: 1.5 }}>
             <Box sx={{ mr: 2 }}>{item.icon}</Box>
@@ -167,17 +167,14 @@ const DashboardHome = () => {
         <Card sx={{ bgcolor: "#2196f3", color: "white" }}>
           <CardContent>
             <Typography variant="h6">Elevators Status</Typography>
-            <Typography variant="body1">Operations - Functioning</Typography>
+            <Typography variant="body1">Operations - Non-Functioning</Typography>
             <Typography variant="body1">Big House - Non-Funcitoning </Typography>
             <Typography variant="body2">Contracting In Progress</Typography>
           </CardContent>
         </Card>
         <Card sx={{ bgcolor: "#4caf50", color: "white" }}>
           <CardContent>
-            <Typography variant="h6">Current Weekend Assigned</Typography>
-            <Typography variant="body1">August 23 (Daniel)</Typography>
-            <Typography variant="body1">August 24 (Daniel)</Typography>
-            <Typography variant="body2">Remain Weekends: 2</Typography>
+            <Typography variant="h6">Happy 2026!!</Typography>
           </CardContent>
         </Card>
       </Box>
