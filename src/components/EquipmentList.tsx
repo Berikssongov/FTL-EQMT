@@ -31,6 +31,36 @@ import BuildIcon from "@mui/icons-material/Build";
 import { getAllUsers } from "../services/userService";
 import { User } from "../types";
 
+const redactedStyle = {
+  height: 18,
+  width: "100%",
+  maxWidth: 140,
+  backgroundColor: "#000",
+  borderRadius: 4,
+  position: "relative",
+  overflow: "hidden",
+  cursor: "not-allowed",
+
+  "&::after": {
+    content: '"Secrets 🤫"',
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    color: "#fff",
+    fontSize: "0.7rem",
+    fontWeight: 600,
+    opacity: 0,
+    transition: "opacity 0.2s ease",
+    pointerEvents: "none",
+    whiteSpace: "nowrap",
+  },
+
+  "&:hover::after": {
+    opacity: 1,
+  },
+};
+
 
 const EquipmentList: React.FC = () => {
   const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
@@ -40,6 +70,7 @@ const EquipmentList: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { role } = useRole();
+  const isAdmin = role === "admin"; // ✅ NEW
 
   const [users, setUsers] = useState<User[]>([]);
 
@@ -164,7 +195,13 @@ useEffect(() => {
                   <TableCell>{item.name}</TableCell>
                   <TableCell>{item.category}</TableCell>
                   <TableCell>{item.status}</TableCell>
-                  <TableCell>{item.location}</TableCell>
+                  <TableCell>
+                    {isAdmin ? (
+                      item.location
+                    ) : (
+                      <Box sx={redactedStyle} />
+                    )}
+                  </TableCell>
                   <TableCell>
                     {item.lastInspection
                       ? new Date(item.lastInspection).toLocaleString(undefined, {

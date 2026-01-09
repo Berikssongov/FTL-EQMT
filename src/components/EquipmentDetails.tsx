@@ -37,6 +37,37 @@ import AddServiceModal from "./AddServiceModal";
 import AddPartModal from "./AddPartModal";
 import { useRole } from "../contexts/RoleContext";
 
+const redactedStyle = {
+  height: 18,
+  width: "100%",
+  maxWidth: 140,
+  backgroundColor: "#000",
+  borderRadius: 4,
+  position: "relative",
+  overflow: "hidden",
+  cursor: "not-allowed",
+
+  "&::after": {
+    content: '"Secrets 🤫"',
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    color: "#fff",
+    fontSize: "0.7rem",
+    fontWeight: 600,
+    opacity: 0,
+    transition: "opacity 0.2s ease",
+    pointerEvents: "none",
+    whiteSpace: "nowrap",
+  },
+
+  "&:hover::after": {
+    opacity: 1,
+  },
+};
+
+
 const EquipmentDetails: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -49,6 +80,7 @@ const EquipmentDetails: React.FC = () => {
   const [services, setServices] = useState<EquipmentServiceRecord[]>([]);
   const [parts, setParts] = useState<EquipmentPart[]>([]);
   const { role, loading: roleLoading } = useRole();
+  const isAdmin = role === "admin"; // ✅ NEW
 
   const canEdit = role === "admin";
   const canAddServiceOrParts = role === "admin" || role === "manager";
@@ -286,7 +318,14 @@ const hasFindings = !!(
         <Typography><strong>Serial #:</strong> {equipment.serialNumber}</Typography>
         <Typography><strong>Status:</strong> {equipment.status}</Typography>
         <Typography><strong>Condition:</strong> {equipment.condition}</Typography>
-        <Typography><strong>Location:</strong> {equipment.location}</Typography>
+        <Typography sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <strong>Location:</strong>
+            {isAdmin ? (
+              <span>{equipment.location}</span>
+            ) : (
+              <Box sx={redactedStyle} />
+            )}
+          </Typography>
         {equipment.lastInspection && (
           <Typography>
             <strong>Last Inspected:</strong>{" "}
