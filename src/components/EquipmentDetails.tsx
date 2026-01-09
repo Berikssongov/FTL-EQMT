@@ -315,7 +315,14 @@ const hasFindings = !!(
         <Typography><strong>Category:</strong> {equipment.category}</Typography>
         <Typography><strong>Make:</strong> {equipment.make}</Typography>
         <Typography><strong>Model #:</strong> {equipment.modelNumber}</Typography>
-        <Typography><strong>Serial #:</strong> {equipment.serialNumber}</Typography>
+        <Typography sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <strong>Serial #:</strong>
+            {isAdmin ? (
+              <span>{equipment.serialNumber}</span>
+            ) : (
+              <Box sx={redactedStyle} />
+            )}
+          </Typography>
         <Typography><strong>Status:</strong> {equipment.status}</Typography>
         <Typography><strong>Condition:</strong> {equipment.condition}</Typography>
         <Typography sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -333,7 +340,14 @@ const hasFindings = !!(
           </Typography>
         )}
         {equipment.notes && (
-          <Typography><strong>Notes:</strong> {equipment.notes}</Typography>
+          <Typography sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <strong>Notes:</strong>
+          {isAdmin ? (
+            <span>{equipment.notes}</span>
+          ) : (
+            <Box sx={redactedStyle} />
+          )}
+        </Typography>
         )}
       </Paper>
 
