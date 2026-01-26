@@ -176,6 +176,16 @@ export interface User {
   role: string;
 }
 
+export interface Radio {
+  id: string;
+  callsign: string;
+  radioNumber: string;
+  serialNumber: string;
+  status: "available" | "assigned" | "out_of_service";
+  assignedTo: string | null;
+}
+
+
 
 
 

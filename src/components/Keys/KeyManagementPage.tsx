@@ -5,6 +5,9 @@ import {
   Container,
   Typography,
   Divider,
+  Tabs,
+  Tab,
+  Box,
 } from "@mui/material";
 import {
   collection,
@@ -19,6 +22,7 @@ import KeyFormPanel from "./KeyFormPanel";
 import KeySearchPanel from "./KeySearchPanel";
 import KeyLogTable from "./KeyLogTable";
 import AddKeyPanel from "./AddKeyPanel";
+import RadioManagement from "../radios/RadioManagement";
 
 import { useRole } from "../../contexts/RoleContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -40,6 +44,12 @@ const KeyManagementPage: React.FC = () => {
 
   const [logs, setLogs] = useState<KeyLogEntry[]>([]);
   const [allKeys, setAllKeys] = useState<KeyData[]>([]);
+
+  const [tab, setTab] = useState<"keys" | "radios">("keys");
+
+const handleTabChange = (_: React.SyntheticEvent, newValue: "keys" | "radios") => {
+  setTab(newValue);
+};
 
   // Fetch key logs
   const fetchLogs = async () => {
@@ -114,27 +124,41 @@ const KeyManagementPage: React.FC = () => {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" fontWeight={600} gutterBottom>
-        Key Management
+        Key & Radio Management
       </Typography>
-
-      {/* 🔑 Only managers and admins can sign keys in/out */}
-      {(role === "manager" || role === "admin") && (
-        <KeyFormPanel keys={allKeys} refreshKeys={refreshAll} />
+  
+      <Tabs
+        value={tab}
+        onChange={handleTabChange}
+        sx={{ mb: 3 }}
+      >
+        <Tab label="Keys" value="keys" />
+        <Tab label="Radios" value="radios" />
+      </Tabs>
+  
+      {/* 🔑 KEYS TAB — existing logic untouched */}
+      {tab === "keys" && (
+        <Box>
+          {(role === "manager" || role === "admin") && (
+            <KeyFormPanel keys={allKeys} refreshKeys={refreshAll} />
+          )}
+  
+          {superAdmin && <AddKeyPanel refreshKeys={refreshAll} />}
+  
+          <Divider sx={{ my: 4 }} />
+  
+          <KeySearchPanel />
+          <KeyLogTable rows={logs.slice(0, 5)} />
+  
+          <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mt: 5 }}>
+            Full Key History
+          </Typography>
+          <KeyLogTable rows={logs} />
+        </Box>
       )}
-
-      {/* 🔐 Only superAdmins can add keys */}
-      {superAdmin && <AddKeyPanel refreshKeys={refreshAll} />}
-
-      <Divider sx={{ my: 4 }} />
-
-      {/* 🔎 Everyone including guests can search and view logs */}
-      <KeySearchPanel />
-      <KeyLogTable rows={logs.slice(0, 5)} />
-
-      <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mt: 5 }}>
-        Full Key History
-      </Typography>
-      <KeyLogTable rows={logs} />
+  
+      {/* 📻 RADIOS TAB */}
+      {tab === "radios" && <RadioManagement />}
     </Container>
   );
 };
