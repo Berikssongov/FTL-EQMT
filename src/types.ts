@@ -183,6 +183,7 @@ export interface Radio {
   serialNumber: string;
   status: "available" | "assigned" | "out_of_service";
   assignedTo: string | null;
+  assignedAt: string | null;
 }
 
 
