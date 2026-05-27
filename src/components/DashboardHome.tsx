@@ -174,7 +174,8 @@ const DashboardHome = () => {
         </Card>
         <Card sx={{ bgcolor: "#4caf50", color: "white" }}>
           <CardContent>
-            <Typography variant="h6">Happy 2026!!</Typography>
+            <Typography variant="h6">River Road Lockbox Code</Typography>
+            <Typography variant="body1">1840</Typography>
           </CardContent>
         </Card>
       </Box>
